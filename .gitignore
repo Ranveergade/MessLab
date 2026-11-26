@@ -1,13 +1,102 @@
-__pycache__/
-*.py[cod]
-.venv/
-db.sqlite3
-media/
-ml_store/
+# ---------------------------------------------------------------------------
+# Local-only files. Nothing here should ever reach GitHub.
+# If a file is already tracked, use: git rm --cached <path>
+# ---------------------------------------------------------------------------
+
+# --- Environment, secrets and credentials ---------------------------------
 .env
-.pytest_cache/
-*.log
+.env.*
 .env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+local_settings.py
+Rolesdata.md
+
+# --- Local docs / deploy helpers kept out of the repo ---------------------
 NOTES_ARCHITECTURE.md
 Procfile
+
+# --- Databases, dumps and backups -----------------------------------------
+db.sqlite3
+db.sqlite3.*
 db.sqlite3.bak-pre-phase8
+*.sqlite3
+*.sqlite3-journal
+*.db
+*.bak
+*.bak-*
+*.dump
+*.dump.gz
+backups/
+
+# --- Trained models, uploads and collected static -------------------------
+ml_store/
+*.joblib
+media/
+staticfiles/
+
+# --- Logs, runtime state and process files --------------------------------
+*.log
+logs/
+*.pid
+*.sock
+gunicorn.pid
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+sdist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-wheel-metadata/
+
+# --- Virtual environments -------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Test, type-check and lint caches -------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+nosetests.xml
+report.xml
+
+# --- Django / editor / OS artefacts ---------------------------------------
+*.pot
+*.orig
+*.rej
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+.ipynb_checkpoints/
