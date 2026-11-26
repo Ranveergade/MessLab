@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Model health · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Forecasting · two-stage model</p>
+    <h1>Model health</h1>
+    <p>Stage 1 predicts how many students will attend. Stage 2 splits that demand across the dishes on the menu. Both are validated on a time-based holdout, never a random shuffle.</p>
+  </div>
+  <div class="page-actions">
+    <form method="post" action="{% url 'web:manager-retrain' %}" data-confirm="Retrain from the latest closed days and regenerate draft plans? This can take a few seconds.">
+      {% csrf_token %}
+      <button class="btn btn-primary" type="submit">🧠 Retrain now</button>
+    </form>
+  </div>
+</div>
+
+{% if health.empty %}
+  <div class="empty">
+    <span class="emoji">🧠</span>
+    No model has been trained yet. Run <code>python manage.py train_models</code>, or use the retrain button once enough real service history exists.
+  </div>
+{% else %}
+  {% with run=health.run %}
+    <div class="kpi-row">
+      <div class="kpi accent">
+        <div class="label">Active version</div>
+        <div class="value" style="font-size:1.05rem">{{ run.version }}</div>
+        <div class="delta">trained {{ run.trained_at|date:"d M Y, H:i" }}</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Participation MAE</div>
+        <div class="value">{{ run.participation_mae|one_decimal }}</div>
+        <div class="delta">students · naive {{ run.participation_baseline_mae|one_decimal }}</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Dish demand MAE</div>
+        <div class="value">{{ run.dish_mae_kg|one_decimal }} <small>kg</small></div>
+        <div class="delta">naive {{ run.dish_baseline_mae_kg|one_decimal }} kg</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Improvement</div>
+        <div class="value">{{ run.participation_improvement_pct|one_decimal }}<small>%</small></div>
+        <div class="delta">participation vs naive · dish {{ run.dish_improvement_pct|one_decimal }}%</div>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:16px">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Validation scorecard</div>
+            <div class="card-sub">Time-based holdout · last 21 days</div>
+          </div>
+          <span class="pill info">{{ run.participation_algorithm }} / {{ run.dish_algorithm }}</span>
+        </div>
+        <div class="mtable" style="--mcols:minmax(0,1.3fr) repeat(3,minmax(0,.8fr))">
+          <div class="mhead"><span>Metric</span><span>Model</span><span>Naive</span><span>Result</span></div>
+          <div class="mrow">
+            <div class="mcell main"><span class="strong">Participation MAE</span><div class="sub">students per meal</div></div>
+            <div class="mcell"><span class="cell-label">Model</span><span class="num">{{ run.participation_mae|one_decimal }}</span></div>
+            <div class="mcell"><span class="cell-label">Naive</span><span class="num muted">{{ run.participation_baseline_mae|one_decimal }}</span></div>
+            <div class="actions"><span class="pill {% if run.participation_improvement_pct > 0 %}good{% else %}warn{% endif %}">{{ run.participation_improvement_pct|one_decimal }}%</span></div>
+          </div>
+          <div class="mrow">
+            <div class="mcell main"><span class="strong">Participation MAPE</span><div class="sub">mean absolute percentage error</div></div>
+            <div class="mcell"><span class="cell-label">Model</span><span class="num">{{ run.participation_mape|one_decimal }}%</span></div>
+            <div class="mcell"><span class="cell-label">Naive</span><span class="num muted">{{ run.participation_baseline_mape|one_decimal }}%</span></div>
+            <div class="actions"><span class="pill neutral">lower is better</span></div>
+          </div>
+          <div class="mrow">
+            <div class="mcell main"><span class="strong">Dish demand MAE</span><div class="sub">kg per dish per service</div></div>
+            <div class="mcell"><span class="cell-label">Model</span><span class="num">{{ run.dish_mae_kg|one_decimal }} kg</span></div>
+            <div class="mcell"><span class="cell-label">Naive</span><span class="num muted">{{ run.dish_baseline_mae_kg|one_decimal }} kg</span></div>
+            <div class="actions"><span class="pill {% if run.dish_improvement_pct > 0 %}good{% else %}warn{% endif %}">{{ run.dish_improvement_pct|one_decimal }}%</span></div>
+          </div>
+          <div class="mrow">
+            <div class="mcell main"><span class="strong">Dish demand MAPE</span><div class="sub">percentage error, small volumes can inflate this</div></div>
+            <div class="mcell"><span class="cell-label">Model</span><span class="num">{{ run.dish_mape|one_decimal }}%</span></div>
+            <div class="mcell"><span class="cell-label">Naive</span><span class="num muted">{{ run.dish_baseline_mape|one_decimal }}%</span></div>
+            <div class="actions"><span class="pill neutral">diagnostic</span></div>
+          </div>
+        </div>
+        <div class="assumption">
+          Naive baseline = same weekday last week, falling back to a rolling 7-day mean. Metrics are computed only on the holdout window, which is never used for fitting.
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Training window</div>
+        <div class="stack" style="margin-top:10px">
+          <div class="row-between"><span class="small">Train rows</span><span class="small mono">{{ run.train_rows }}</span></div>
+          <div class="row-between"><span class="small">Validation rows</span><span class="small mono">{{ run.validation_rows }}</span></div>
+          <div class="row-between"><span class="small">Train dates</span><span class="small mono">{{ run.train_start|date:"d M" }} – {{ run.train_end|date:"d M Y" }}</span></div>
+          <div class="row-between"><span class="small">Validation dates</span><span class="small mono">{{ run.validation_start|date:"d M" }} – {{ run.validation_end|date:"d M Y" }}</span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="card-title">Safety buffer</div>
+        <div class="stack" style="margin-top:10px">
+          <div class="row-between"><span class="small">Service level</span><span class="small mono">{{ health.assumptions.service_level|ratio_pct }}</span></div>
+          <div class="row-between"><span class="small">Minimum buffer</span><span class="small mono">{{ health.assumptions.buffer_min_pct|ratio_pct }}</span></div>
+          <div class="row-between"><span class="small">Maximum buffer</span><span class="small mono">{{ health.assumptions.buffer_max_pct|ratio_pct }}</span></div>
+          <div class="row-between"><span class="small">Rounding</span><span class="small mono">0.25 kg</span></div>
+        </div>
+        <div class="assumption">
+          The recommendation is predicted demand plus a service-level buffer, clamped between the minimum and maximum buffer. That guardrail prevents a noisy model from over-cooking.
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <div class="card-head">
+        <div>
+          <div class="card-title">How the forecast is built</div>
+          <div class="card-sub">No leakage: every feature is known before the meal starts</div>
+        </div>
+      </div>
+      <div class="grid grid-3">
+        <div class="card card-flat" style="background:var(--surface-2)">
+          <div class="small strong">1 · Intent signal</div>
+          <div class="tiny muted" style="margin-top:5px">Declared yes/maybe intents, intent coverage, historical attendance ratio and the weekly default plan. Intents are stored only for engaged students, so coverage is itself a feature.</div>
+        </div>
+        <div class="card card-flat" style="background:var(--surface-2)">
+          <div class="small strong">2 · Context</div>
+          <div class="tiny muted" style="margin-top:5px">Weekday, meal, exam and holiday flags, weather, special menus and lagged participation. Future calendar flags come from DayContext, never from the outcome.</div>
+        </div>
+        <div class="card card-flat" style="background:var(--surface-2)">
+          <div class="small strong">3 · Dish share</div>
+          <div class="tiny muted" style="margin-top:5px">A second model predicts each dish's share of meal demand from rolling uptake, category, diet and menu position. Shares are normalised to sum to one before kilograms are computed.</div>
+        </div>
+      </div>
+      <div class="assumption">
+        Feedback loop: check-ins and waste logs from closed days become the next training rows. Manager overrides are logged separately for audit; they do not silently rewrite history.
+      </div>
+    </section>
+  {% endwith %}
+{% endif %}
+
+<section class="card" style="margin-top:16px">
+  <div class="card-head">
+    <div>
+      <div class="card-title">Model run history</div>
+      <div class="card-sub">Most recent runs, newest first</div>
+    </div>
+  </div>
+  {% if health.runs %}
+    <div class="stack">
+      {% for run in health.runs %}
+        <div class="row-between" style="align-items:flex-start">
+          <div>
+            <div class="small strong">{{ run.version }}{% if run.is_active %} <span class="pill good">active</span>{% endif %}</div>
+            <div class="tiny muted">{{ run.trained_at|date:"d M Y, H:i" }} · {{ run.train_rows }} train / {{ run.validation_rows }} validation rows</div>
+          </div>
+          <div class="tag-list">
+            <span class="pill neutral">MAE {{ run.participation_mae|one_decimal }}</span>
+            <span class="pill neutral">Dish {{ run.dish_mae_kg|one_decimal }} kg</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty"><span class="emoji">🗂️</span>No model runs recorded.</div>
+  {% endif %}
+</section>
+{% endblock %}

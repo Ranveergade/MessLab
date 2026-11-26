@@ -1,0 +1,113 @@
+{% load messlab_extras i18n %}
+{% if perms_feedback_review and not perms_plan_approve %}
+  <a class="side-link {% if active == 'supervisor' %}active{% endif %}" href="{% url 'web:supervisor-home' %}">
+    <span class="ico" aria-hidden="true">📥</span><span>{% translate "Supervisor inbox" %}</span>
+  </a>
+{% endif %}
+{% if perms_plan_approve %}
+  <a class="side-link {% if active == 'dashboard' %}active{% endif %}" href="{% url 'web:manager-dashboard' %}">
+    <span class="ico" aria-hidden="true">📊</span><span>{% translate "Dashboard" %}</span>
+  </a>
+{% endif %}
+{% if perms_plan_view %}
+  <a class="side-link {% if active == 'plan' %}active{% endif %}" href="{% url 'web:manager-plan' %}">
+    <span class="ico" aria-hidden="true">📋</span><span>{% translate "Preparation plan" %}</span>
+  </a>
+{% endif %}
+{% if perms_live_view %}
+  <a class="side-link {% if active == 'live' %}active{% endif %}" href="{% url 'web:manager-live' %}">
+    <span class="ico" aria-hidden="true">🟢</span><span>{% translate "Live service" %}</span>
+  </a>
+{% endif %}
+{% if perms_waste_view %}
+  <a class="side-link {% if active == 'waste' %}active{% endif %}" href="{% url 'web:manager-waste' %}">
+    <span class="ico" aria-hidden="true">🗑️</span><span>{% translate "Waste analytics" %}</span>
+  </a>
+{% endif %}
+{% if perms_waste_write %}
+  <a class="side-link {% if active == 'waste' %}active{% endif %}" href="{% url 'web:manager-waste-entry' %}">
+    <span class="ico" aria-hidden="true">📝</span><span>{% translate "Record waste" %}</span>
+  </a>
+{% endif %}
+{% if perms_service_close %}
+  <a class="side-link {% if active == 'close' %}active{% endif %}" href="{% url 'web:manager-close-day' %}">
+    <span class="ico" aria-hidden="true">🔒</span><span>{% translate "Close service day" %}</span>
+  </a>
+{% endif %}
+{% if perms_impact_view %}
+  <a class="side-link {% if active == 'impact' %}active{% endif %}" href="{% url 'web:manager-impact' %}">
+    <span class="ico" aria-hidden="true">🌍</span><span>{% translate "Impact" %}</span>
+  </a>
+{% endif %}
+{% if perms_menu_manage %}
+  <a class="side-link {% if active == 'menu' %}active{% endif %}" href="{% url 'web:manager-menu' %}">
+    <span class="ico" aria-hidden="true">🍲</span><span>{% translate "Menu insights" %}</span>
+  </a>
+  <a class="side-link {% if active == 'menu-day' %}active{% endif %}" href="{% url 'web:manager-menu-day' %}">
+    <span class="ico" aria-hidden="true">📅</span><span>{% translate "Daily menu" %}</span>
+  </a>
+  <a class="side-link {% if active == 'menu-manage' %}active{% endif %}" href="{% url 'web:manager-menu-manage' %}">
+    <span class="ico" aria-hidden="true">✏️</span><span>{% translate "Menu manager" %}</span>
+  </a>
+  <a class="side-link {% if active == 'data' %}active{% endif %}" href="{% url 'web:manager-data' %}">
+    <span class="ico" aria-hidden="true">➕</span><span>{% translate "Add data" %}</span>
+  </a>
+{% endif %}
+{% if perms_model_manage %}
+  <a class="side-link {% if active == 'model' %}active{% endif %}" href="{% url 'web:manager-model' %}">
+    <span class="ico" aria-hidden="true">🧠</span><span>{% translate "Model health" %}</span>
+  </a>
+{% endif %}
+{% if perms_import_csv %}
+  <a class="side-link {% if active == 'import' %}active{% endif %}" href="{% url 'web:manager-import' %}">
+    <span class="ico" aria-hidden="true">📥</span><span>{% translate "Import data" %}</span>
+  </a>
+{% endif %}
+{% if perms_users_view %}
+  <a class="side-link {% if active == 'users' %}active{% endif %}" href="{% url 'web:manager-users' %}">
+    <span class="ico" aria-hidden="true">👥</span><span>{% translate "Accounts" %}</span>
+  </a>
+{% endif %}
+{% if perms_audit_view %}
+  <a class="side-link {% if active == 'audit' %}active{% endif %}" href="{% url 'web:manager-audit' %}">
+    <span class="ico" aria-hidden="true">🕘</span><span>{% translate "Account audit" %}</span>
+  </a>
+{% endif %}
+{% if perms_feedback_create %}
+  <a class="side-link {% if active == 'staff' %}active{% endif %}" href="{% url 'web:staff-home' %}">
+    <span class="ico" aria-hidden="true">💬</span><span>{% translate "Tell the supervisor" %}</span>
+  </a>
+{% endif %}
+{% if perms_checkin_scan %}
+  <a class="side-link {% if active == 'scan' %}active{% endif %}" href="{% url 'web:staff-scan' %}">
+    <span class="ico" aria-hidden="true">📷</span><span>{% translate "Scan check-in" %}</span>
+  </a>
+{% endif %}
+
+<div class="side-section">{% translate "Mess Committee SOP" %}</div>
+{% if perms_sop_view %}
+  <a class="side-link {% if active == 'sop' %}active{% endif %}" href="{% url 'messops:sop' %}">
+    <span class="ico" aria-hidden="true">📜</span><span>{% translate "Standard operating procedure" %}</span>
+  </a>
+{% endif %}
+{% if perms_committee_manage %}
+  <a class="side-link {% if active == 'committee' %}active{% endif %}" href="{% url 'messops:manager-committee' %}">
+    <span class="ico" aria-hidden="true">👥</span><span>{% translate "Committee & reviews" %}</span>
+  </a>
+{% endif %}
+{% if perms_menu_cycle %}
+  <a class="side-link {% if active == 'menu-cycle' %}active{% endif %}" href="{% url 'messops:manager-menu-cycle' %}">
+    <span class="ico" aria-hidden="true">🗓️</span><span>{% translate "Monthly menu cycle" %}</span>
+  </a>
+{% endif %}
+{% if perms_complaint_manage %}
+  <a class="side-link {% if active == 'complaints-manage' %}active{% endif %}" href="{% url 'messops:manager-complaints' %}">
+    <span class="ico" aria-hidden="true">📣</span><span>{% translate "Complaints & grievances" %}</span>
+  </a>
+{% endif %}
+{% if perms_menu_view %}
+  <a class="side-link {% if active == 'menu-board' %}active{% endif %}" href="{% url 'messops:menu-board' %}">
+    <span class="ico" aria-hidden="true">🪧</span><span>{% translate "Canteen menu board" %}</span>
+  </a>
+{% endif %}
+

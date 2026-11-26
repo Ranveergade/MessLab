@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Account audit · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Administration</p>
+    <h1>Account audit</h1>
+    <p>Registrations, role changes and account state changes. Entries use pseudonymous codes, never names.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-users' %}">👥 Accounts</a>
+  </div>
+</div>
+
+<form method="get" class="card" style="margin-bottom:14px">
+  <div class="row wrap" style="align-items:end">
+    <div class="field">
+      <label for="action">Action</label>
+      <select class="select" id="action" name="action">
+        <option value="">All actions</option>
+        {% for value, label in action_choices %}
+          <option value="{{ value }}" {% if value == action_filter %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Filter</button>
+    {% if action_filter %}<a class="btn" href="{% url 'web:manager-audit' %}">Clear</a>{% endif %}
+  </div>
+</form>
+
+{% if rows %}
+  <div class="card">
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Action</th>
+            <th>Actor</th>
+            <th>Target</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="tiny">{{ row.entry.at|date:"d M Y H:i" }}</td>
+              <td><span class="pill neutral">{{ row.entry.get_action_display }}</span></td>
+              <td class="code">{{ row.actor }}</td>
+              <td class="code">{{ row.target }}</td>
+              <td class="tiny muted">{{ row.detail|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page.has_other_pages %}
+      <div class="row wrap" style="justify-content:space-between;margin-top:12px">
+        <span class="tiny muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+        <div class="row" style="gap:6px">
+          {% if page.has_previous %}
+            <a class="btn btn-sm" href="?page={{ page.previous_page_number }}&action={{ action_filter }}">← Previous</a>
+          {% endif %}
+          {% if page.has_next %}
+            <a class="btn btn-sm" href="?page={{ page.next_page_number }}&action={{ action_filter }}">Next →</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="empty"><span class="emoji">🕘</span>No audit entries yet.</div>
+{% endif %}
+{% endblock %}

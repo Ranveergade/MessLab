@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Daily menu · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Kitchen · {{ date|date:"l, d M Y" }}</p>
+    <h1>Daily menu</h1>
+    <p>Every meal published for this day, with the student feedback attached to it.</p>
+  </div>
+  <div class="row wrap">
+    <form method="get" class="row" style="gap:6px">
+      <input class="input" type="date" name="date" value="{{ date|date:'Y-m-d' }}">
+      <button class="btn btn-sm" type="submit">Show</button>
+    </form>
+    <a class="btn btn-sm btn-primary" href="{% url 'web:manager-menu-manage' %}?date={{ date|date:'Y-m-d' }}">Edit menu</a>
+  </div>
+</div>
+
+{% if not rows %}
+  <div class="empty"><span class="emoji">🍽️</span>No menu published for this day yet.</div>
+{% else %}
+  <div class="stack-lg">
+    {% for row in rows %}
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">{{ row.menu.meal.get_name_display }}</div>
+            <div class="card-sub">
+              {{ row.menu.meal.start_time|time:"H:i" }}–{{ row.menu.meal.end_time|time:"H:i" }}
+              · {{ row.items|length }} dishes
+              {% if row.menu.is_special %}· <span class="special-tag">special</span>{% endif %}
+            </div>
+          </div>
+          <div class="row wrap" style="gap:6px">
+            <span class="pill good">Yes {{ row.feedback.yes }}</span>
+            <span class="pill warn">Change {{ row.feedback.no }}</span>
+          </div>
+        </div>
+
+        {% if row.menu.notes %}
+          <div class="alert info" style="margin-top:10px"><span class="ico">📝</span><span>{{ row.menu.notes }}</span></div>
+        {% endif %}
+
+        <div class="menu-list" style="margin-top:12px">
+          {% for item in row.items %}
+            <div class="menu-item">
+              <div class="name">
+                <span class="diet-dot {{ item.dish.diet_type }}"></span>
+                <span>{{ item.dish.name }}</span>
+                {% if item.serving_category == 'limited' %}
+                  <span class="pill warn tiny">Limited</span>
+                {% elif item.serving_category == 'special' %}
+                  <span class="pill info tiny">Special</span>
+                {% else %}
+                  <span class="pill neutral tiny">Unlimited</span>
+                {% endif %}
+                {% if item.is_special %}<span class="special-tag">special</span>{% endif %}
+              </div>
+              <span class="meta">{{ item.planned_quantity_kg }} kg · {{ item.serving_note }}</span>
+            </div>
+          {% empty %}
+            <div class="empty">No dishes on this menu.</div>
+          {% endfor %}
+        </div>
+
+        {% if row.suggestions %}
+          <div style="margin-top:14px">
+            <div class="small strong">What students asked for</div>
+            <div class="stack" style="margin-top:6px">
+              {% for feedback in row.suggestions %}
+                <div class="row-between tiny">
+                  <span>{{ feedback.suggestion }}</span>
+                  <span class="muted mono">{{ feedback.student.profile.student_code|default:"—" }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

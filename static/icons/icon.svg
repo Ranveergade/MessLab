@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="MessLab">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#185741"/>
+      <stop offset="1" stop-color="#3a9a70"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#bg)"/>
+  <circle cx="96" cy="96" r="58" fill="#fffdf8"/>
+  <path d="M72 126V66l24 34 24-34v60" fill="none" stroke="#1f6b4f" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

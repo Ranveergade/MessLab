@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Staff" %} · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{% blocktranslate with when=date|date:"l, d M Y" %}Kitchen floor · {{ when }}{% endblocktranslate %}</p>
+    <h1>{% translate "Today's preparation" %}</h1>
+    <p>{% translate "Approved quantities only. No forecasts, no cost, no student names." %}</p>
+  </div>
+  {% if can_scan %}
+    <div class="page-actions">
+      <a class="btn btn-primary" href="{% url 'web:staff-scan' %}">📷 {% translate "Open the scanner" %}</a>
+    </div>
+  {% endif %}
+</div>
+
+<div class="kpi-row">
+  <div class="kpi accent">
+    <div class="label">{% translate "Approved today" %}</div>
+    <div class="value">{{ total_kg|floatformat:1 }} kg</div>
+    <div class="delta">{% blocktranslate count counter=prep|length %}{{ counter }} meal planned{% plural %}{{ counter }} meals planned{% endblocktranslate %}</div>
+  </div>
+  {% for window in windows %}
+    <div class="kpi">
+      <div class="label">{{ window.slot.get_name_display }}</div>
+      <div class="value">{{ window.start|time:"H:i" }}</div>
+      <div class="delta">
+        {% if window.state == "open" %}<span class="pill good">{% translate "Open now" %}</span>
+        {% elif window.state == "upcoming" %}<span class="pill neutral">{% translate "Upcoming" %}</span>
+        {% else %}<span class="pill neutral">{% translate "Closed" %}</span>{% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="split" style="margin-top:16px">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">{% translate "Prep sheet" %}</div>
+        <div class="card-sub">{% translate "Dish and kilograms for each meal" %}</div>
+      </div>
+    </div>
+    {% for meal in prep %}
+      <div class="stack" style="margin-bottom:16px">
+        <div class="row-between">
+          <div class="small strong">{{ meal.meal.get_name_display }}</div>
+          <span class="pill neutral">{% blocktranslate count counter=meal.dishes|length %}{{ counter }} dish{% plural %}{{ counter }} dishes{% endblocktranslate %}</span>
+        </div>
+        {% for plan in meal.dishes %}
+          <div class="row-between" style="padding:8px 0;border-bottom:1px solid #eef2ef">
+            <span>{{ plan.dish.name }}</span>
+            <span class="mono strong">{{ plan.recommended_kg|floatformat:1 }} kg</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% empty %}
+      <div class="empty"><span class="emoji">📋</span>{% translate "No approved prep sheet for today yet." %}</div>
+    {% endfor %}
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">{% translate "Tell the supervisor" %}</div>
+        <div class="card-sub">{% translate "An opinion, a need or an issue. Short and simple." %}</div>
+      </div>
+    </div>
+    <form method="post" class="stack">
+      {% csrf_token %}
+      <div class="segmented">
+        {% for value, label in kinds %}
+          <label class="seg-btn">
+            <input type="radio" name="kind" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+      <label class="small strong" for="feedback-message">{% translate "Message" %}</label>
+      <textarea id="feedback-message" name="message" rows="4" maxlength="2000" required
+                placeholder="{% translate 'e.g. We need more serving spoons at counter 2.' %}"></textarea>
+      <button class="btn btn-primary btn-block" type="submit">{% translate "Send to supervisor" %}</button>
+    </form>
+  </section>
+</div>
+
+<section class="card" style="margin-top:16px">
+  <div class="card-title">{% translate "Your recent messages" %}</div>
+  <div class="stack" style="margin-top:10px">
+    {% for item in feedback %}
+      <div class="row-between" style="padding:8px 0;border-bottom:1px solid #eef2ef">
+        <div>
+          <div class="small strong">{{ item.get_kind_display }}</div>
+          <div class="tiny muted">{{ item.message }}</div>
+        </div>
+        <span class="pill {% if item.status == 'resolved' %}good{% elif item.status == 'seen' %}warn{% else %}neutral{% endif %}">
+          {{ item.get_status_display }}
+        </span>
+      </div>
+    {% empty %}
+      <div class="empty"><span class="emoji">💬</span>{% translate "Nothing sent yet." %}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Monthly menu cycle · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess Committee · Monthly menu planning</p>
+    <h1>Monthly menu cycle</h1>
+    <p>
+      Operator list → student consultation → mutual finalization → publication. Each step is
+      kept on record so the agreed menu is unambiguous.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'messops:sop' %}#planning">SOP §4 planning</a>
+    <a class="btn btn-ghost" href="{% url 'messops:menu-board' %}">Canteen board</a>
+  </div>
+</div>
+
+<form method="get" class="card" style="margin-bottom:14px">
+  <div class="row wrap" style="align-items:end">
+    <div class="field">
+      <label for="month">Menu cycle month</label>
+      <input class="input" type="month" id="month" name="month"
+             value="{% if month_param %}{{ month_param|date:'Y-m' }}{% elif cycle %}{{ cycle.month|date:'Y-m' }}{% endif %}">
+    </div>
+    <button class="btn" type="submit">Open cycle</button>
+    <span class="tiny muted">Cycles: {{ cycles|length }} recent · next month is {{ next_month|date:"F Y" }}</span>
+  </div>
+</form>
+
+{% if not cycle %}
+  <section class="card">
+    <div class="card-title">Start a monthly cycle</div>
+    <p class="small muted" style="margin-top:6px">
+      Create the cycle for the month being planned, then paste the operator's exhaustive
+      available-item list.
+    </p>
+    <form method="post" class="row wrap" style="margin-top:12px;align-items:end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <div class="field">
+        <label for="new-month">Month</label>
+        <input class="input" type="month" id="new-month" name="month"
+               value="{% if month_param %}{{ month_param|date:'Y-m' }}{% else %}{{ next_month|date:'Y-m' }}{% endif %}">
+      </div>
+      <button class="btn btn-primary" type="submit">Create cycle</button>
+    </form>
+  </section>
+{% else %}
+  <div class="split">
+    <div class="stack-lg">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">{{ cycle.label }}</div>
+            <div class="card-sub">
+              {{ cycle.get_status_display }}
+              {% if cycle.approved_by_name %} · approved by {{ cycle.approved_by_name }}{% endif %}
+              {% if cycle.published_at %} · published {{ cycle.published_at|date:"d M Y" }}{% endif %}
+            </div>
+          </div>
+          <span class="pill {% if cycle.is_published %}good{% elif cycle.is_closed %}neutral{% else %}warn{% endif %}">
+            {{ cycle.get_status_display }}
+          </span>
+        </div>
+
+        <form method="post" class="stack" style="margin-top:12px">
+          {% csrf_token %}
+          <div class="field">
+            <label for="available_items">1 · Operator's available-item list</label>
+            <textarea class="input" id="available_items" name="available_items" rows="6"
+                      placeholder="Breakfast: poha, idli, eggs (limited 2)…&#10;Lunch: rice, dal, roti (unlimited), paneer (special, 2×/month)…">{{ cycle.available_items }}</textarea>
+            <div class="help">Separate regular, special and limited-quantity items with their frequency.</div>
+          </div>
+          <div class="field">
+            <label for="operator_notes">Operator notes</label>
+            <textarea class="input" id="operator_notes" name="operator_notes" rows="2"
+                      placeholder="Seasonal availability, supplier constraints, festival days…">{{ cycle.operator_notes }}</textarea>
+          </div>
+          <div class="field">
+            <label for="student_preferences">2 · Consolidated student preferences</label>
+            <textarea class="input" id="student_preferences" name="student_preferences" rows="4"
+                      placeholder="What students asked for, grouped by meal and programme…">{{ cycle.student_preferences }}</textarea>
+            <div class="help">{{ preference_count }} preference{{ preference_count|pluralize }} submitted for this cycle.</div>
+          </div>
+          <div class="field">
+            <label for="final_menu">3 · Mutually agreed final menu</label>
+            <textarea class="input" id="final_menu" name="final_menu" rows="8"
+                      placeholder="Classify every item: unlimited / special (frequency) / limited (portion + frequency).">{{ cycle.final_menu }}</textarea>
+          </div>
+          <div class="field">
+            <label for="approved_by_name">Approved by (Chairperson – Hostel Residence)</label>
+            <input class="input" id="approved_by_name" name="approved_by_name" type="text"
+                   value="{{ cycle.approved_by_name }}" placeholder="Name of the approving chairperson">
+          </div>
+
+          <div class="row wrap">
+            <button class="btn" type="submit" name="action" value="save">Save details</button>
+            {% if cycle.status == 'operator_list' or cycle.status == 'consultation' %}
+              <button class="btn btn-primary" type="submit" name="action" value="open">Open student consultation</button>
+            {% endif %}
+            {% if cycle.status == 'consultation' or cycle.status == 'finalized' %}
+              <button class="btn btn-primary" type="submit" name="action" value="finalize">Record mutual finalization</button>
+            {% endif %}
+            {% if cycle.status == 'finalized' or cycle.status == 'published' %}
+              <button class="btn btn-primary" type="submit" name="action" value="publish">Publish to students</button>
+            {% endif %}
+          </div>
+          <div class="tiny muted">
+            Opening consultation requires the operator list. Finalization requires the final menu.
+            Publication requires finalization.
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Proposed changes to the agreed menu</div>
+            <div class="card-sub">SOP §7 · discuss, agree, then communicate in advance</div>
+          </div>
+          <span class="pill info">{{ changes|length }}</span>
+        </div>
+
+        <form method="post" class="stack" style="margin-top:12px">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="change-save">
+          <div class="grid grid-2">
+            {% for field in change_form %}
+              <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="help" style="color:#b42318">{{ error }}</div>{% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+          <button class="btn btn-sm" type="submit">Record proposed change</button>
+        </form>
+
+        <div class="stack" style="margin-top:12px">
+          {% for change in changes %}
+            <div style="padding:10px 0;border-bottom:1px solid #eef2ef">
+              <div class="row-between wrap">
+                <div>
+                  <div class="small strong">{{ change.service_date|date:"d M Y" }} · {{ change.summary }}</div>
+                  <div class="tiny muted">
+                    {% if change.meal %}{{ change.meal.get_name_display }} · {% endif %}
+                    proposed by {{ change.proposed_by.get_full_name|default:change.proposed_by.username|default:"—" }}
+                    {% if change.agreed_at %} · agreed {{ change.agreed_at|date:"d M Y" }}{% endif %}
+                  </div>
+                </div>
+                <span class="pill {% if change.status == 'implemented' %}good{% elif change.status == 'agreed' %}info{% elif change.status == 'rejected' %}bad{% else %}warn{% endif %}">
+                  {{ change.get_status_display }}
+                </span>
+              </div>
+              <div class="tiny muted" style="margin-top:4px">{{ change.reason }}</div>
+              <form method="post" class="row wrap" style="margin-top:8px;align-items:center">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change-status">
+                <input type="hidden" name="change_id" value="{{ change.pk }}">
+                <select class="select" name="status" style="max-width:220px">
+                  {% for value, label in change_statuses %}
+                    <option value="{{ value }}" {% if value == change.status %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-sm" type="submit">Update status</button>
+              </form>
+            </div>
+          {% empty %}
+            <div class="empty"><span class="emoji">🔁</span>No changes proposed for the agreed menu.</div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="stack-lg">
+      <section class="card">
+        <div class="card-title">Student preferences</div>
+        <p class="tiny muted" style="margin-top:6px">
+          {{ preference_count }} response{{ preference_count|pluralize }} for {{ cycle.label }}.
+          Anonymous student codes are shown.
+        </p>
+        <div class="stack" style="margin-top:10px">
+          {% for preference in preferences %}
+            <div style="padding:8px 0;border-bottom:1px solid #eef2ef">
+              <div class="row-between">
+                <span class="small strong">{{ preference.student.profile.student_code|default:"—" }}</span>
+                <span class="tiny muted">
+                  {% if preference.meal %}{{ preference.meal.get_name_display }}{% else %}All meals{% endif %}
+                </span>
+              </div>
+              <div class="tiny muted" style="margin-top:4px;white-space:pre-line">{{ preference.preference }}</div>
+              {% if preference.notes %}<div class="tiny" style="margin-top:4px">Note: {{ preference.notes }}</div>{% endif %}
+            </div>
+          {% empty %}
+            <p class="tiny muted">No preferences submitted yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">Recent cycles</div>
+        <div class="stack" style="margin-top:10px">
+          {% for item in cycles %}
+            <a class="row-between small {% if item.pk == cycle.pk %}strong{% endif %}"
+               href="{% url 'messops:manager-menu-cycle' %}?month={{ item.month|date:'Y-m' }}">
+              <span>{{ item.label }}</span>
+              <span class="pill {% if item.is_published %}good{% elif item.is_closed %}neutral{% else %}warn{% endif %}">{{ item.get_status_display }}</span>
+            </a>
+          {% empty %}
+            <p class="tiny muted">No other cycles yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Menu preferences · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess Committee · Monthly menu consultation</p>
+    <h1>Have a say in next month's menu</h1>
+    <p>
+      The SOP asks the committee to collect student preferences before the monthly menu is
+      finalized. Your input goes to all four representatives.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'messops:sop' %}#planning">How planning works</a>
+  </div>
+</div>
+
+<div class="split">
+  <div class="stack-lg">
+    {% if cycle %}
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Consultation open · {{ cycle.label }}</div>
+            <div class="card-sub">Submitting again updates your earlier preference</div>
+          </div>
+          <span class="pill good">Open</span>
+        </div>
+        {% if existing %}
+          <div class="alert info" style="margin-top:12px">
+            <span class="ico">📝</span>
+            <span>You already submitted a preference for this cycle. Saving replaces it.</span>
+          </div>
+        {% endif %}
+        <form method="post" class="stack" style="margin-top:12px">
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+            <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ form.non_field_errors|join:", " }}</span></div>
+          {% endif %}
+          {% for field in form %}
+            <div class="field">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="help" style="color:#b42318">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          <button class="btn btn-primary" type="submit">Send to the committee</button>
+        </form>
+      </section>
+    {% else %}
+      <section class="card">
+        <div class="card-title">Consultation is closed right now</div>
+        <p class="small muted" style="margin-top:8px">
+          The committee opens preferences when the operator's available-item list is ready.
+          Watch this page — it becomes available at the start of each monthly cycle.
+        </p>
+        {% if latest %}
+          <div class="divider"></div>
+          <div class="row-between">
+            <span class="small">Latest cycle: <strong>{{ latest.label }}</strong></span>
+            <span class="pill warn">{{ latest.get_status_display }}</span>
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if latest and latest.final_menu %}
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Latest agreed menu · {{ latest.label }}</div>
+            <div class="card-sub">Finalized by the committee and the mess operator</div>
+          </div>
+          <a class="btn btn-sm" href="{% url 'messops:menu-board' %}">Canteen board</a>
+        </div>
+        <div class="small" style="margin-top:10px;white-space:pre-line">{{ latest.final_menu }}</div>
+      </section>
+    {% elif latest and latest.available_items %}
+      <section class="card">
+        <div class="card-title">Items proposed by the operator · {{ latest.label }}</div>
+        <p class="tiny muted" style="margin-top:6px">
+          These are the items the operator has offered for the month.
+        </p>
+        <div class="small" style="margin-top:10px;white-space:pre-line">{{ latest.available_items }}</div>
+      </section>
+    {% endif %}
+  </div>
+
+  <aside class="stack-lg">
+    <section class="card">
+      <div class="card-title">What the SOP covers</div>
+      <ul class="small muted" style="margin-top:10px;padding-left:18px">
+        <li>The operator lists breakfast, lunch, snacks and dinner items for the month.</li>
+        <li>Students send choices through the four representatives.</li>
+        <li>The committee consolidates preferences and discusses them with the operator.</li>
+        <li>The menu is finalized before the month begins and displayed at the canteen board.</li>
+      </ul>
+    </section>
+    <section class="card">
+      <div class="card-title">Item categories</div>
+      <div class="stack" style="margin-top:10px">
+        <div class="row"><span class="pill good">Unlimited</span><span class="tiny muted">no predefined quantity restriction</span></div>
+        <div class="row"><span class="pill info">Special</span><span class="tiny muted">variety item with a stated frequency</span></div>
+        <div class="row"><span class="pill warn">Limited</span><span class="tiny muted">fixed portion per student</span></div>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

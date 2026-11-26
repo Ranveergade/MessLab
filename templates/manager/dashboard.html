@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Manager dashboard · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess operations · {{ date|date:"l, d M Y" }}</p>
+    <h1>Today's dining control room</h1>
+    <p>Declared intents, forecast demand and the kitchen plan in one view. Approve what you trust, override what you know better.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-export' %}?kind=plan&date={{ date|date:'Y-m-d' }}">⬇ Plan CSV</a>
+    <a class="btn btn-primary" href="{% url 'web:manager-plan' %}?date={{ date|date:'Y-m-d' }}">Open prep plan</a>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi accent">
+    <div class="label">Recommended today</div>
+    <div class="value">{{ total_recommended|one_decimal }} <small>kg</small></div>
+    <div class="delta">across {{ meals|length }} meals</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Projected saving</div>
+    <div class="value">{{ total_saved|one_decimal }} <small>kg</small></div>
+    <div class="delta">vs traditional baseline of {{ total_baseline|one_decimal }} kg</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Waste · last 14 days</div>
+    <div class="value">{{ waste.totals.waste_pct }}<small>%</small></div>
+    <div class="delta">{{ waste.totals.wasted_kg|one_decimal }} kg · {{ waste.totals.cost_inr|money }}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Avoided · 30 days</div>
+    <div class="value">{{ impact.avoided.waste_kg|one_decimal }} <small>kg</small></div>
+    <div class="delta">{{ impact.avoided.cost_inr|money }} · {{ impact.avoided.co2e_kg|one_decimal }} kg CO₂e</div>
+  </div>
+</div>
+
+{% if impact.empty %}
+  <div class="alert info" style="margin-top:14px">
+    <span class="ico">ℹ️</span>
+    <span>Before/after impact appears after at least one service day has been closed with a preparation plan and waste entries.</span>
+  </div>
+{% endif %}
+
+<div class="split" style="margin-top:18px">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Service alerts</div>
+        <div class="card-sub">Run-out risks from live check-ins and the current plan</div>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="{% url 'web:manager-live' %}?date={{ date|date:'Y-m-d' }}">Live service →</a>
+    </div>
+    <div class="stack">
+      {% for item in live %}
+        {% for alert in item.alerts %}
+          <div class="alert {{ alert.severity }}">
+            <span class="ico">{% if alert.severity == 'high' %}🚨{% elif alert.severity == 'medium' %}⚠️{% else %}ℹ️{% endif %}</span>
+            <div>
+              <div class="small strong">{{ item.meal.get_name_display }}{% if alert.dish %} · {{ alert.dish }}{% endif %}</div>
+              <div class="tiny">{{ alert.message }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% empty %}
+        <div class="empty"><span class="emoji">✅</span>No service alerts.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Crowd risk by meal</div>
+        <div class="card-sub">Peak 30-minute load vs counter capacity</div>
+      </div>
+    </div>
+    {% for meal in meals %}
+      {% with peak=peaks|get_item:meal.slot.name %}
+        <div class="bar-row">
+          <div class="bar-top">
+            <span class="small strong">{{ meal.slot.name|meal_icon }} {{ meal.slot.get_name_display }}</span>
+            <span class="tiny muted">{{ peak.max_risk|ratio_pct }} peak risk</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill {% if peak.max_risk >= 0.9 %}bad{% elif peak.max_risk >= 0.6 %}warn{% endif %}" style="width:{{ peak.max_risk|risk_width }}%"></div>
+          </div>
+          <div class="tiny muted">
+            {% if peak.suggest_extra_counters %}
+              Add {{ peak.suggest_extra_counters }} counter(s) at peak.
+            {% else %}
+              Capacity looks sufficient.
+            {% endif %}
+            Peak window {{ meal.slot.peak_label }}.
+          </div>
+        </div>
+      {% endwith %}
+    {% endfor %}
+    <div class="assumption">Crowd risk uses the last 28 days of check-in timestamps. It is a planning aid, not a queue-length sensor.</div>
+  </section>
+</div>
+
+<div class="section-head" style="margin:22px 0 12px">
+  <div>
+    <h2>Meal plans</h2>
+    <p class="small muted" style="margin-top:3px">Top dishes per meal. Open the prep plan to approve, override or export every dish.</p>
+  </div>
+</div>
+
+{% for meal in meals %}
+  <article class="meal-block">
+    <div class="meal-block-head">
+      <div class="row" style="align-items:flex-start">
+        <span class="meal-icon" aria-hidden="true">{{ meal.slot.name|meal_icon }}</span>
+        <div>
+          <div class="meal-title">{{ meal.slot.get_name_display }}</div>
+          <div class="meal-time">{{ meal.slot.start_time|time:"H:i" }}–{{ meal.slot.end_time|time:"H:i" }} · peak {{ meal.slot.peak_label }} · {{ meal.slot.counters }} counters</div>
+        </div>
+      </div>
+      <div class="tag-list">
+        <span class="pill info">{{ meal.crowd.participants }} expected</span>
+        <span class="pill neutral">{{ meal.intents.POSITIVE }} coming · {{ meal.intents.NO }} skipping</span>
+        <span class="pill {{ meal.crowd.overall_level|level_class }}">{{ meal.crowd.overall_level|level_label }} crowd</span>
+        {% if meal.approved %}
+          <span class="pill good">Approved</span>
+        {% elif meal.draft %}
+          <span class="pill warn">Draft</span>
+        {% else %}
+          <span class="pill neutral">No plan</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="meal-block-body">
+      {% if meal.rows %}
+        <div class="mtable" style="--mcols:minmax(0,1.6fr) repeat(3,minmax(0,.7fr)) auto">
+          <div class="mhead"><span>Dish</span><span>Predicted</span><span>Baseline</span><span>Recommended</span><span>Status</span></div>
+          {% for row in meal.rows|slice:":4" %}
+            <div class="mrow">
+              <div class="mcell main">
+                <div class="strong">{{ row.plan.dish.name }}</div>
+                <div class="sub">{{ row.plan.dish.get_category_display }} · {{ row.plan.dish.avg_portion_grams }}g portion · {{ row.plan.dish.get_diet_type_display }}</div>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Predicted</span>
+                <span class="num">{% if row.forecast %}{{ row.forecast.predicted_demand_kg|one_decimal }} kg{% else %}—{% endif %}</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Baseline</span>
+                <span class="num muted">{{ row.baseline_kg|one_decimal }} kg</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Recommended</span>
+                <span class="num good">{{ row.recommended_kg|one_decimal }} kg</span>
+                {% if row.saved_kg > 0 %}<div class="sub">saves {{ row.saved_kg|one_decimal }} kg</div>{% endif %}
+              </div>
+              <div class="actions">
+                <span class="pill {{ row.plan.status|status_class }}">{{ row.plan.get_status_display }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        {% if meal.rows|length > 4 %}
+          <div class="table-note">+ {{ meal.rows|length|add:"-4" }} more dish(es) in the preparation plan.</div>
+        {% endif %}
+      {% else %}
+        <div class="empty"><span class="emoji">🧾</span>No preparation plan for this meal yet. Open the prep plan to generate one from the forecast.</div>
+      {% endif %}
+    </div>
+  </article>
+{% endfor %}
+
+<div class="split" style="margin-top:18px">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Waste trend · 14 days</div>
+        <div class="card-sub">Wasted kg as a share of prepared kg</div>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="{% url 'web:manager-waste' %}">Details →</a>
+    </div>
+    {% if waste.trend %}
+      <div class="trend-bars" role="img" aria-label="Daily waste percentage for the last 14 days">
+        {% for row in waste.trend %}
+          <div class="tb" title="{{ row.date|date:'d M' }} · {{ row.waste_pct }}% · {{ row.wasted|one_decimal }} kg">
+            <i style="height:{{ row.waste_pct|bar_width:40 }}%"></i>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="row-between tiny muted" style="margin-top:6px">
+        <span>{{ waste.start|date:"d M" }}</span>
+        <span>{{ waste.end|date:"d M" }}</span>
+      </div>
+    {% else %}
+      <div class="empty"><span class="emoji">📉</span>No waste records yet.</div>
+    {% endif %}
+    <div class="assumption">Cost uses {{ assumptions.cost_per_kg_inr|money }}/kg and {{ assumptions.co2e_per_kg }} kg CO₂e per kg wasted. Figures use the configured impact assumptions.</div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Model health</div>
+        <div class="card-sub">Last trained model and validation error</div>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="{% url 'web:manager-model' %}">Open →</a>
+    </div>
+    {% if health.run %}
+      {% with run=health.run %}
+        <div class="row-between">
+          <div>
+            <div class="small strong">{{ run.version }}</div>
+            <div class="tiny muted">Trained {{ run.trained_at|date:"d M Y, H:i" }}</div>
+          </div>
+          <span class="pill {% if run.participation_improvement_pct > 0 %}good{% else %}warn{% endif %}">
+            {{ run.participation_improvement_pct|one_decimal }}% vs naive
+          </span>
+        </div>
+        <div class="grid grid-2" style="margin-top:12px">
+          <div class="kpi" style="box-shadow:none">
+            <div class="label">Participation MAE</div>
+            <div class="value" style="font-size:1.2rem">{{ run.participation_mae|one_decimal }}</div>
+            <div class="delta">students · baseline {{ run.participation_baseline_mae|one_decimal }}</div>
+          </div>
+          <div class="kpi" style="box-shadow:none">
+            <div class="label">Dish demand MAE</div>
+            <div class="value" style="font-size:1.2rem">{{ run.dish_mae_kg|one_decimal }} <small>kg</small></div>
+            <div class="delta">baseline {{ run.dish_baseline_mae_kg|one_decimal }} kg</div>
+          </div>
+        </div>
+      {% endwith %}
+    {% else %}
+      <div class="empty"><span class="emoji">🧠</span>No trained model yet. Run <code>python manage.py train_models</code>.</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

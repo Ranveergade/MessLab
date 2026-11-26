@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Menu manager · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Kitchen · {{ date|date:"D d M Y" }} · {{ meal.get_name_display }}</p>
+    <h1>Menu manager</h1>
+    <p>Publish the dishes and planned quantities for a service. Forecasts read these lines, so keeping them accurate keeps the preparation plan honest.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-menu' %}">📈 Menu insights</a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="alert high" role="alert" style="margin-bottom:14px">
+    <span class="ico">⚠️</span><span>{{ error }}</span>
+  </div>
+{% endif %}
+
+<form method="get" class="card" style="margin-bottom:14px">
+  <div class="row wrap" style="align-items:end">
+    <div class="field">
+      <label for="date">Service date</label>
+      <input class="input" type="date" id="date" name="date" value="{{ date|date:'Y-m-d' }}">
+    </div>
+    <div class="field">
+      <label for="meal">Meal</label>
+      <select class="select" id="meal" name="meal">
+        {% for slot in meal_slots %}
+          <option value="{{ slot.name }}" {% if slot.pk == meal.pk %}selected{% endif %}>{{ slot.get_name_display }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Open</button>
+    <span class="tiny muted">
+      {% if menu %}
+        Saved menu · {{ menu.items.count }} dish{{ menu.items.count|pluralize }}{% if menu.notes %} · “{{ menu.notes }}”{% endif %}
+      {% else %}
+        No menu published for this service yet.
+      {% endif %}
+    </span>
+  </div>
+</form>
+
+<div class="split">
+  <section class="card">
+    <div class="card-title">Dishes on this menu</div>
+    <div class="card-sub">Enter kilograms per dish. Leave a quantity empty to remove the dish from this service.</div>
+    <div class="tiny muted" style="margin-top:6px">
+      SOP §5: mark each dish <strong>Unlimited</strong> (served freely), <strong>Special</strong>
+      (variety item; give times/month) or <strong>Limited</strong> (fixed portion; give grams and
+      times/month). The student menu and canteen board show this classification.
+    </div>
+
+    <form method="post" action="{% url 'web:manager-menu-manage' %}" style="margin-top:12px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="menu-save">
+      <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+      <input type="hidden" name="meal" value="{{ meal.pk }}">
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;margin-bottom:12px">
+        <div class="field">
+          <label for="{{ meta_form.notes.id_for_label }}">Service note</label>
+          {{ meta_form.notes }}
+        </div>
+        <label class="check" style="align-self:end">
+          <input type="checkbox" name="is_special" {% if menu.is_special %}checked{% endif %}>
+          Special service (festival, guest meal)
+        </label>
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Dish</th>
+              <th>Category</th>
+              <th>Diet</th>
+              <th style="width:120px">Planned kg</th>
+              <th style="width:130px">SOP serving</th>
+              <th style="width:100px">Portion g</th>
+              <th style="width:100px">Times/month</th>
+              <th style="width:80px">Special</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>
+                  <a href="?date={{ date|date:'Y-m-d' }}&meal={{ meal.name }}&dish={{ row.dish.pk }}"><strong>{{ row.dish.name }}</strong></a>
+                  {% if not row.dish.is_active %}<span class="pill neutral" style="margin-left:6px">Inactive</span>{% endif %}
+                  <div class="tiny muted">{{ row.dish.avg_portion_grams }} g baseline portion</div>
+                </td>
+                <td class="tiny">{{ row.dish.get_category_display }}</td>
+                <td class="tiny">{{ row.dish.get_diet_type_display }}</td>
+                <td>
+                  <input class="input" type="number" name="qty_{{ row.dish.pk }}" min="0" step="0.01"
+                         value="{{ row.quantity }}" placeholder="—" aria-label="Planned kilograms for {{ row.dish.name }}">
+                </td>
+                <td>
+                  <select class="select" name="category_{{ row.dish.pk }}" aria-label="SOP serving category for {{ row.dish.name }}">
+                    <option value="unlimited" {% if row.category == 'unlimited' %}selected{% endif %}>Unlimited</option>
+                    <option value="special" {% if row.category == 'special' %}selected{% endif %}>Special</option>
+                    <option value="limited" {% if row.category == 'limited' %}selected{% endif %}>Limited</option>
+                  </select>
+                </td>
+                <td>
+                  <input class="input" type="number" name="portion_{{ row.dish.pk }}" min="1" max="2000" step="10"
+                         value="{{ row.portion }}" placeholder="—" aria-label="Portion grams for {{ row.dish.name }}">
+                </td>
+                <td>
+                  <input class="input" type="number" name="frequency_{{ row.dish.pk }}" min="1" max="31" step="1"
+                         value="{{ row.frequency }}" placeholder="—" aria-label="Servings per month for {{ row.dish.name }}">
+                </td>
+                <td>
+                  <input type="checkbox" name="special_{{ row.dish.pk }}" {% if row.special %}checked{% endif %}
+                         aria-label="Special for {{ row.dish.name }}">
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" class="tiny muted">No dishes in the catalogue yet. Add one on the right.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row-between" style="margin-top:12px">
+        <span class="tiny muted">Saving replaces the published lines for this service.</span>
+        <button class="btn btn-primary" type="submit">Save menu</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-title">{% if editing_dish %}Edit dish{% else %}Add a dish{% endif %}</div>
+    <div class="card-sub">
+      {% if editing_dish %}
+        Editing “{{ editing_dish.name }}”. <a href="{% url 'web:manager-menu-manage' %}?date={{ date|date:'Y-m-d' }}&meal={{ meal.name }}">Add a new dish instead</a>.
+      {% else %}
+        The catalogue is shared by every menu and forecast.
+      {% endif %}
+    </div>
+
+    <form method="post" action="{% url 'web:manager-menu-manage' %}" class="form-grid" style="margin-top:12px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="dish-save">
+      {% if editing_dish %}<input type="hidden" name="dish_id" value="{{ editing_dish.pk }}">{% endif %}
+
+      <div class="field">
+        <label for="{{ dish_form.name.id_for_label }}">Name</label>
+        {{ dish_form.name }}
+        {% if dish_form.name.errors %}<span class="tiny" style="color:var(--red)">{{ dish_form.name.errors|join:", " }}</span>{% endif %}
+      </div>
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="field">
+          <label for="{{ dish_form.category.id_for_label }}">Category</label>
+          {{ dish_form.category }}
+        </div>
+        <div class="field">
+          <label for="{{ dish_form.diet_type.id_for_label }}">Diet</label>
+          {{ dish_form.diet_type }}
+        </div>
+      </div>
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="field">
+          <label for="{{ dish_form.avg_portion_grams.id_for_label }}">Portion (g)</label>
+          {{ dish_form.avg_portion_grams }}
+          {% if dish_form.avg_portion_grams.errors %}<span class="tiny" style="color:var(--red)">{{ dish_form.avg_portion_grams.errors|join:", " }}</span>{% endif %}
+        </div>
+        <div class="field">
+          <label for="{{ dish_form.popularity_baseline.id_for_label }}">Popularity (0–1)</label>
+          {{ dish_form.popularity_baseline }}
+          {% if dish_form.popularity_baseline.errors %}<span class="tiny" style="color:var(--red)">{{ dish_form.popularity_baseline.errors|join:", " }}</span>{% endif %}
+        </div>
+      </div>
+
+      <label class="check">
+        {{ dish_form.is_active }} Keep this dish available
+      </label>
+
+      <button class="btn btn-primary" type="submit">
+        {% if editing_dish %}Save changes{% else %}Add dish{% endif %}
+      </button>
+    </form>
+
+    {% if editing_dish %}
+      <form method="post" action="{% url 'web:manager-menu-manage' %}" style="margin-top:10px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="dish-toggle">
+        <input type="hidden" name="dish_id" value="{{ editing_dish.pk }}">
+        <button class="btn btn-ghost btn-block" type="submit">
+          {% if editing_dish.is_active %}Deactivate dish{% else %}Reactivate dish{% endif %}
+        </button>
+      </form>
+      <p class="tiny muted" style="margin-top:8px">Dishes are never deleted, because historical menus and waste logs refer to them.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

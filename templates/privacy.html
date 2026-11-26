@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Your data · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Privacy</p>
+    <h1>Your data in MessLab</h1>
+    <p>MessLab stores your account, meal intents, check-ins, menu feedback and green points. No biometrics, no location tracking, no advertising.</p>
+  </div>
+</div>
+
+<div class="stack-lg">
+  <section class="card">
+    <div class="card-title">What we keep</div>
+    <ul class="small muted" style="margin-top:10px;padding-left:18px">
+      <li>Your name, email, phone and role, so the mess can identify your account.</li>
+      <li>Meal intents, check-ins and menu feedback, so the kitchen can plan quantities.</li>
+      <li>Green points and badges, which are your own reward history.</li>
+      <li>Short-lived login codes, stored only as a hash, and security events with masked email addresses.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Export or delete</div>
+    <p class="small muted" style="margin-top:8px">The export is a JSON file you can keep. Deletion removes your account and the rows tied to it; aggregate meal counts remain, without your identifier.</p>
+    <div class="row wrap" style="margin-top:12px">
+      <a class="btn btn-primary" href="{% url 'web:privacy-export' %}">⬇ Download my data</a>
+    </div>
+    <div class="divider"></div>
+    <form method="post" action="{% url 'web:privacy-delete' %}" class="stack"
+          data-confirm="Delete your account and personal records? This cannot be undone.">
+      {% csrf_token %}
+      <div class="field">
+        <label for="confirm">Type DELETE to confirm</label>
+        <input class="input" id="confirm" name="confirm" autocomplete="off" required pattern="DELETE">
+      </div>
+      <button class="btn btn-danger" type="submit">Delete my account</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

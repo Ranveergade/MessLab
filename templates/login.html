@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign in · MessLab{% endblock %}
+{% block anon_content %}
+<div class="login-wrap">
+  <section class="login-art">
+    <div class="brand" style="color:#fff">
+      <span class="brand-mark" style="background:rgba(255,255,255,.16);box-shadow:none">🌿</span>
+      <span>MessLab<small style="color:rgba(255,255,255,.65)">Intelligent residential dining</small></span>
+    </div>
+    <h2>Cook what students will actually eat.</h2>
+    <p>Students declare intent in two taps. The mess gets a per-dish preparation plan, a live run-out alert and a waste number it can act on.</p>
+    <div class="quote">
+      “The goal is not another feedback form. It is a shorter line at 1:10 pm, a full plate of paneer at 8:45 pm, and less food in the bin.”
+    </div>
+    <div class="row wrap" style="margin-top:26px;gap:8px">
+      <span class="hero-chip">🧠 Two-stage ML</span>
+      <span class="hero-chip">📉 Waste ↓</span>
+      <span class="hero-chip">📱 PWA</span>
+      <span class="hero-chip">🔒 No biometrics</span>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <div class="login-card">
+      <div class="stack">
+        <div>
+          <p class="eyebrow" style="font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:800">MessLab</p>
+          <h1 style="margin-top:6px">Welcome to MessLab</h1>
+          {% if step == "verify" %}
+            <p class="muted" style="margin-top:6px">Enter the 6-digit code sent to <strong>{{ email }}</strong>.</p>
+          {% else %}
+            <p class="muted" style="margin-top:6px">Sign in with your college email. We will send a one-time code.</p>
+          {% endif %}
+        </div>
+
+        {% if step == "verify" %}
+          <div class="login-card">
+            {% if error %}
+              <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ error }}</span></div>
+            {% endif %}
+            <form method="post" action="{% url 'web:login' %}" class="stack" id="otp-verify-form" autocomplete="off">
+              {% csrf_token %}
+              <input type="hidden" name="step" value="verify">
+              <input type="hidden" name="email" value="{{ email }}">
+              <input type="hidden" name="next" value="{{ next }}">
+              <div class="field">
+                <label for="id_code">Sign-in code</label>
+                <input class="input" type="text" name="code" id="id_code" inputmode="numeric"
+                       pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"
+                       placeholder="123456" required autofocus>
+              </div>
+              <button class="btn btn-primary btn-block" type="submit">Verify and sign in</button>
+            </form>
+
+            <div class="row wrap" style="justify-content:space-between;align-items:center;gap:10px">
+              <form method="post" action="{% url 'web:login' %}" class="inline-form" id="otp-resend-form">
+                {% csrf_token %}
+                <input type="hidden" name="step" value="request">
+                <input type="hidden" name="email" value="{{ email }}">
+                <input type="hidden" name="next" value="{{ next }}">
+                <button class="btn btn-ghost btn-sm" type="submit" id="otp-resend" data-cooldown="60">Resend code</button>
+                <span class="tiny muted" id="otp-resend-hint" aria-live="polite"></span>
+              </form>
+              <a class="tiny" href="{% url 'web:login' %}">Use a different email</a>
+            </div>
+            <p class="tiny muted">The code expires in {{ otp_ttl_minutes }} minutes and works once.</p>
+          </div>
+        {% else %}
+          <form method="post" action="{% url 'web:login' %}" class="stack" id="otp-request-form">
+            {% csrf_token %}
+            {% if error %}
+              <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ error }}</span></div>
+            {% endif %}
+            <input type="hidden" name="step" value="request">
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="field">
+              <label for="id_email">College email</label>
+              <input class="input" type="email" name="email" id="id_email" autocomplete="email"
+                     autocapitalize="none" spellcheck="false" maxlength="254" required
+                     placeholder="you@college.edu" value="{{ email }}">
+            </div>
+            <button class="btn btn-primary btn-block" type="submit">Send me a code</button>
+          </form>
+
+          <p class="tiny muted center">
+            New here? <a href="{% url 'web:register' %}">Create an account</a>.
+          </p>
+          {% if allow_password_login %}
+            <p class="tiny muted center">
+              <a href="{% url 'web:login-password' %}">Sign in with a password instead</a>
+            </p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/login.js' %}" defer></script>
+{% endblock %}

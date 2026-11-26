@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Green points · MessLab{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow" style="color:rgba(255,255,255,.7)">Responsible plate</p>
+  <h1>{{ summary.points }} green points</h1>
+  <p>Points come from showing up when you said you would, skipping with notice, and cleaning your plate. No ratings, no complaints.</p>
+  <div class="hero-row">
+    <span class="hero-chip">🔥 {{ summary.streak }}-day streak</span>
+    <span class="hero-chip">🍽️ {{ summary.clean_plates }} clean plates</span>
+    <span class="hero-chip">📣 {{ summary.skips }} early skips</span>
+    {% if perms_plan_weekly %}
+      <span class="hero-chip">🏠 Rank {{ summary.hostel_rank|default:"—" }}</span>
+    {% endif %}
+  </div>
+</section>
+
+<div class="grid grid-4" style="margin-top:16px">
+  <div class="kpi accent"><div class="label">Points</div><div class="value">{{ summary.points }}</div><div class="delta">all time</div></div>
+  <div class="kpi"><div class="label">Honoured intents</div><div class="value">{{ summary.honoured }}</div><div class="delta">intent matched attendance</div></div>
+  <div class="kpi"><div class="label">Clean plates</div><div class="value">{{ summary.clean_plates }}</div><div class="delta">+6 each</div></div>
+  <div class="kpi"><div class="label">Early skips</div><div class="value">{{ summary.skips }}</div><div class="delta">food not cooked</div></div>
+</div>
+
+<div class="split" style="margin-top:16px">
+  <section class="card">
+    <div class="card-head">
+      <div><div class="card-title">Badges</div><div class="card-sub">Earned from behaviour, not purchases</div></div>
+      <span class="pill neutral">{{ summary.badges|length }} earned</span>
+    </div>
+    <div class="badge-grid">
+      {% for badge in summary.badges %}
+        <div class="badge-card">
+          <span class="b-ico" aria-hidden="true">{{ badge.icon }}</span>
+          <div><div class="small strong">{{ badge.name }}</div><div class="tiny muted">{{ badge.description }}</div></div>
+        </div>
+      {% empty %}
+        <div class="empty" style="grid-column:1/-1"><span class="emoji">🌱</span>No badges yet. One check-in starts the streak.</div>
+      {% endfor %}
+      {% if summary.next_badge %}
+        <div class="badge-card locked">
+          <span class="b-ico" aria-hidden="true">{{ summary.next_badge.icon }}</span>
+          <div><div class="small strong">{{ summary.next_badge.name }}</div><div class="tiny muted">Next · {{ summary.next_badge.description }}</div></div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="divider"></div>
+    <div class="card-title">Recent activity</div>
+    <div class="stack" style="margin-top:10px">
+      {% for event in recent %}
+        <div class="row-between" style="align-items:flex-start">
+          <div class="row" style="align-items:flex-start">
+            <span aria-hidden="true">{% if event.badge %}{{ event.badge.icon }}{% elif event.reason == 'skip_notice' %}📣{% elif event.reason == 'clean_plate' %}🍽️{% else %}🌱{% endif %}</span>
+            <div>
+              <div class="small strong">{{ event.get_reason_display }}</div>
+              <div class="tiny muted">{{ event.date|date:"d M" }}{% if event.detail %} · {{ event.detail }}{% endif %}</div>
+            </div>
+          </div>
+          <span class="pill {% if event.points > 0 %}good{% else %}neutral{% endif %}">{{ event.points|stringformat:"+d" }} pts</span>
+        </div>
+      {% empty %}
+        <div class="empty"><span class="emoji">📭</span>No reward activity yet.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if perms_plan_weekly %}
+  <section class="card">
+    <div class="card-title">Hostel vs hostel</div>
+    <div class="card-sub">Last 30 days · estimated kg saved from notified skips</div>
+    <div style="margin-top:12px">
+      {% for row in leaderboard %}
+        <div class="leader-row">
+          <span class="rank {% if forloop.counter <= 3 %}top{% endif %}">{{ forloop.counter }}</span>
+          <div class="grow">
+            <div class="row-between"><span class="small strong">{{ row.label }}</span><span class="small mono">{{ row.points }} pts</span></div>
+            <div class="bar" style="margin-top:4px"><i style="width:{{ row.points|bar_width:leaderboard.0.points }}%"></i></div>
+            <div class="tiny muted">{{ row.skip_notices }} skip notices · ~{{ row.estimated_kg_saved }} kg saved</div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="empty"><span class="emoji">🏠</span>No hostel points yet.</div>
+      {% endfor %}
+    </div>
+    <div class="assumption">
+      kg saved is estimated from notified skips × the observed average kg consumed per participant in the same period. It is an estimate, not a measured procurement saving.
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

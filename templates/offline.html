@@ -1,0 +1,22 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f6b4f">
+  <title>Offline · MessLab</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <main class="container" style="min-height:100dvh;display:grid;place-items:center;padding:24px 16px">
+    <div class="card" style="max-width:460px;text-align:center">
+      <div style="font-size:2.6rem" aria-hidden="true">🌿</div>
+      <h1 style="margin-top:10px">You are offline</h1>
+      <p class="muted" style="margin-top:8px">MessLab cached the app shell, but this page needs a connection. Your last intent is safe on the server.</p>
+      <a class="btn btn-primary btn-block" href="/" style="margin-top:18px">Try again</a>
+      <p class="tiny muted" style="margin-top:14px">Only previously visited static assets are available offline. Authenticated pages are never cached on a shared device.</p>
+    </div>
+  </main>
+</body>
+</html>

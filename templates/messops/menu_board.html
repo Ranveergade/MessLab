@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Canteen menu board · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Canteen notice board · {{ date|date:"l, d M Y" }}</p>
+    <h1>Today's agreed menu</h1>
+    <p>
+      Every item is shown with its SOP category. Limited items carry the fixed portion, and
+      special or limited items show their monthly frequency.
+    </p>
+  </div>
+  <div class="page-actions no-print">
+    <button class="btn" type="button" data-print>🖨 Print / PDF</button>
+    <a class="btn btn-ghost" href="{% url 'messops:sop' %}#classification">Category definitions</a>
+  </div>
+</div>
+
+<form method="get" class="card no-print" style="margin-bottom:14px">
+  <div class="row wrap" style="align-items:end">
+    <div class="field">
+      <label for="date">Service date</label>
+      <input class="input" type="date" id="date" name="date" value="{{ date|date:'Y-m-d' }}">
+    </div>
+    <button class="btn" type="submit">Show menu</button>
+    {% if cycle %}
+      <span class="tiny muted">Published monthly menu: <strong>{{ cycle.label }}</strong></span>
+    {% else %}
+      <span class="tiny muted">No monthly menu has been published yet.</span>
+    {% endif %}
+  </div>
+</form>
+
+{% if cycle and cycle.final_menu %}
+  <section class="card" style="margin-bottom:14px">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Monthly menu · {{ cycle.label }}</div>
+        <div class="card-sub">
+          Mutually agreed{% if cycle.approved_by_name %} · approved by {{ cycle.approved_by_name }}{% endif %}
+        </div>
+      </div>
+      <span class="pill good">Published</span>
+    </div>
+    <div class="small" style="margin-top:10px;white-space:pre-line">{{ cycle.final_menu }}</div>
+  </section>
+{% endif %}
+
+<div class="stack-lg">
+  {% for row in rows %}
+    <section class="card">
+      <div class="meal-head">
+        <div>
+          <div class="meal-title">{{ row.menu.meal.get_name_display }}</div>
+          <div class="meal-time">
+            {{ row.menu.meal.start_time|time:"H:i" }}–{{ row.menu.meal.end_time|time:"H:i" }}
+            · {{ row.menu.meal.counters }} counters
+          </div>
+        </div>
+        {% if row.menu.is_special %}<span class="pill info">Special service</span>{% endif %}
+      </div>
+      {% if row.menu.notes %}<p class="tiny muted" style="margin-top:6px">{{ row.menu.notes }}</p>{% endif %}
+
+      <div class="table-wrap" style="margin-top:10px">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Item</th><th>Diet</th><th>Category</th><th>Serving note</th></tr>
+          </thead>
+          <tbody>
+            {% for item in row.items %}
+              <tr>
+                <td><strong>{{ item.dish.name }}</strong></td>
+                <td class="tiny">{{ item.dish.diet_icon }} {{ item.dish.get_diet_type_display }}</td>
+                <td>
+                  <span class="pill {% if item.serving_category == 'unlimited' %}good{% elif item.serving_category == 'special' %}info{% else %}warn{% endif %}">
+                    {{ item.get_serving_category_display }}
+                  </span>
+                </td>
+                <td class="tiny muted">{{ item.serving_note }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="tiny muted">No items published for this meal.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% empty %}
+    <section class="card">
+      <div class="empty"><span class="emoji">🍽️</span>No menu is published for {{ date|date:"d M Y" }}.</div>
+    </section>
+  {% endfor %}
+</div>
+
+<p class="tiny muted" style="margin-top:16px">
+  The monthly menu is finalized through mutual consultation between the Mess Committee and the
+  mess operator under the Mess Committee SOP. Report any deviation to a committee representative.
+</p>
+{% endblock %}

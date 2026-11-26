@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Complaints queue · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess Committee · Grievance queue</p>
+    <h1>Complaints & grievances</h1>
+    <p>
+      Record the committee's discussion with the operator, the agreed action and any escalation to
+      the Chairperson – Hostel Residence.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'messops:sop' %}#complaints">SOP §8 process</a>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:16px">
+  <section class="card">
+    <div class="tiny muted strong">Total in view</div>
+    <div class="card-title" style="margin-top:4px">{{ total }}</div>
+  </section>
+  <section class="card">
+    <div class="tiny muted strong">Open / acknowledged</div>
+    <div class="card-title" style="margin-top:4px">{{ open_count }}</div>
+  </section>
+  <section class="card">
+    <div class="tiny muted strong">Escalated to chairperson</div>
+    <div class="card-title" style="margin-top:4px">{{ escalated_count }}</div>
+  </section>
+</div>
+
+<form method="get" class="card" style="margin-bottom:14px">
+  <div class="row wrap" style="align-items:end">
+    <div class="field">
+      <label for="status">Status</label>
+      <select class="select" id="status" name="status">
+        <option value="">All statuses</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="category">Category</label>
+      <select class="select" id="category" name="category">
+        <option value="">All categories</option>
+        {% for value, label in categories %}
+          <option value="{{ value }}" {% if value == category_filter %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn btn-ghost" href="{% url 'messops:manager-complaints' %}">Clear</a>
+  </div>
+</form>
+
+<div class="stack-lg">
+  {% for complaint in complaints %}
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">{{ complaint.reference }} · {{ complaint.get_category_display }}</div>
+          <div class="card-sub">
+            {{ complaint.created_at|date:"d M Y, H:i" }}
+            · {{ complaint.student.profile.student_code|default:"—" }}
+            {% if complaint.service_date %} · meal date {{ complaint.service_date|date:"d M Y" }}{% endif %}
+            {% if complaint.meal %} · {{ complaint.meal.get_name_display }}{% endif %}
+          </div>
+        </div>
+        <span class="pill {% if complaint.status == 'resolved' or complaint.status == 'closed' %}good{% elif complaint.status == 'escalated' %}bad{% elif complaint.status == 'acknowledged' %}info{% else %}warn{% endif %}">
+          {{ complaint.get_status_display }}
+        </span>
+      </div>
+
+      <p class="small" style="margin-top:10px;white-space:pre-line">{{ complaint.description }}</p>
+
+      {% if complaint.handled_by %}
+        <div class="tiny muted" style="margin-top:6px">
+          Last handled by {{ complaint.handled_by.get_full_name|default:complaint.handled_by.username }}
+          {% if complaint.resolved_at %} · resolved {{ complaint.resolved_at|date:"d M Y" }}{% endif %}
+          {% if complaint.escalated_at %} · escalated {{ complaint.escalated_at|date:"d M Y" }}{% endif %}
+        </div>
+      {% endif %}
+
+      <details style="margin-top:10px">
+        <summary class="small strong" style="cursor:pointer">Record committee action</summary>
+        <form method="post" action="{% url 'messops:manager-complaint-update' complaint.pk %}" class="stack" style="margin-top:10px">
+          {% csrf_token %}
+          <div class="grid grid-2">
+            <div class="field">
+              <label for="status-{{ complaint.pk }}">Status</label>
+              <select class="select" id="status-{{ complaint.pk }}" name="status">
+                {% for value, label in statuses %}
+                  <option value="{{ value }}" {% if value == complaint.status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="note-{{ complaint.pk }}">Committee note (internal)</label>
+              <textarea class="input" id="note-{{ complaint.pk }}" name="committee_note" rows="2"
+                        placeholder="Discussed with the operator on…">{{ complaint.committee_note }}</textarea>
+            </div>
+          </div>
+          <div class="field">
+            <label for="resolution-{{ complaint.pk }}">Resolution / action agreed</label>
+            <textarea class="input" id="resolution-{{ complaint.pk }}" name="resolution" rows="2"
+                      placeholder="Corrective action agreed with the operator and student">{{ complaint.resolution }}</textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" type="submit">Save update</button>
+        </form>
+      </details>
+    </section>
+  {% empty %}
+    <section class="card">
+      <div class="empty"><span class="emoji">📣</span>No complaints match this filter.</div>
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

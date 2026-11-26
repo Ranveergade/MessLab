@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static i18n %}
+{% block title %}{% translate "Scan check-in" %} · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{% blocktranslate with when=date|date:"l, d M Y" %}Canteen · {{ when }}{% endblocktranslate %}</p>
+    <h1>{% translate "Scan check-in" %}</h1>
+    <p>{% translate "Point the camera at the student's pass. The server validates every code." %}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:staff-home' %}">🧑‍🍳 {% translate "Prep sheet" %}</a>
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi accent">
+    <div class="label">{% translate "Checked in today" %}</div>
+    <div class="value">{{ today_total }}</div>
+    <div class="delta">{% translate "across all meals" %}</div>
+  </div>
+  {% for row in slots %}
+    <div class="kpi">
+      <div class="label">{{ row.slot.get_name_display }}</div>
+      <div class="value">{{ row.checkins }}</div>
+      <div class="delta">{{ row.slot.start_time|time:"H:i" }}–{{ row.slot.end_time|time:"H:i" }}</div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="split" style="margin-top:16px">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">{% translate "Camera scanner" %}</div>
+        <div class="card-sub">{% translate "QR codes only. Nothing is uploaded; the code is sent straight to this server." %}</div>
+      </div>
+      {% if open_slot %}
+        <span class="pill good">{{ open_slot.get_name_display }} {% translate "open" %}</span>
+      {% else %}
+        <span class="pill neutral">{% translate "No meal open" %}</span>
+      {% endif %}
+    </div>
+
+    <div class="scan-stage">
+      <video id="scan-video" class="scan-video" playsinline muted></video>
+      <div id="scan-status" class="scan-status" role="status" aria-live="polite">
+        {% translate "Camera is off." %}
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button type="button" class="btn btn-primary" data-scan-start>📷 {% translate "Start camera" %}</button>
+      <button type="button" class="btn" data-scan-stop hidden>{% translate "Stop camera" %}</button>
+    </div>
+
+    <form method="post" action="{% url 'web:staff-scan' %}" id="scan-form" data-scan-form>
+      {% csrf_token %}
+      <input type="hidden" name="pass_token" data-scan-token>
+      <input type="hidden" name="meal" value="{{ open_slot.name|default:'' }}">
+    </form>
+
+    <p class="tiny muted" style="margin-top:10px">
+      {% translate "The browser's built-in BarcodeDetector is used where available. Camera access needs HTTPS or localhost; otherwise use manual entry." %}
+    </p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">{% translate "Manual check-in" %}</div>
+        <div class="card-sub">{% translate "For a cracked screen or a phone without a camera." %}</div>
+      </div>
+    </div>
+    {% if can_manual %}
+      <form method="post" action="{% url 'web:staff-scan' %}" class="stack" style="margin-top:12px">
+        {% csrf_token %}
+        <div class="field">
+          <label for="student-code">{% translate "Student code" %}</label>
+          <input class="input mono" id="student-code" name="code" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false" required
+                 placeholder="H1-00042">
+        </div>
+        <div class="field">
+          <label for="scan-meal">{% translate "Meal" %}</label>
+          <select class="select" id="scan-meal" name="meal">
+            <option value="">{% translate "Auto (currently open meal)" %}</option>
+            {% for slot in meal_slots %}
+              <option value="{{ slot.name }}" {% if open_slot and slot.pk == open_slot.pk %}selected{% endif %}>
+                {{ slot.get_name_display }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">{% translate "Check in" %}</button>
+      </form>
+    {% else %}
+      <div class="empty"><span class="emoji">🔒</span>{% translate "Your role cannot use manual entry." %}</div>
+    {% endif %}
+  </section>
+</div>
+
+<section class="card" style="margin-top:16px">
+  <div class="card-title">{% translate "Recent check-ins" %}</div>
+  <div class="stack" style="margin-top:10px">
+    {% for row in recent %}
+      <div class="row-between" style="padding:8px 0;border-bottom:1px solid #eef2ef">
+        <div>
+          <div class="small strong mono">{{ row.code }}</div>
+          <div class="tiny muted">{{ row.checkin.meal.get_name_display }} · {{ row.checkin.get_source_display }}</div>
+        </div>
+        <span class="tiny muted">{{ row.checkin.timestamp|time:"H:i" }}</span>
+      </div>
+    {% empty %}
+      <div class="empty"><span class="emoji">🎫</span>{% translate "No check-ins yet today." %}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'vendor/jsQR.js' %}" defer></script>
+  <script src="{% static 'js/scan.js' %}" defer></script>
+{% endblock %}

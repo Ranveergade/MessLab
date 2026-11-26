@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Reference data · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Kitchen setup</p>
+    <h1>Add or edit data</h1>
+    <p>Create the meal slots and dishes your mess actually uses. This page starts empty on a real deployment.</p>
+  </div>
+</div>
+
+{% if error %}<div class="alert high"><span class="ico">⚠️</span><span>{{ error }}</span></div>{% endif %}
+
+<div class="split">
+  <section class="card">
+    <div class="card-title">{% if editing_slot %}Edit meal slot{% else %}Add a meal slot{% endif %}</div>
+    <form method="post" class="stack" style="margin-top:12px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="slot-save">
+      {% if editing_slot %}<input type="hidden" name="slot_id" value="{{ editing_slot.pk }}">{% endif %}
+      {{ slot_form.as_p }}
+      <button class="btn btn-primary" type="submit">Save meal slot</button>
+      {% if editing_slot %}<a class="btn btn-ghost" href="{% url 'web:manager-data' %}">Cancel edit</a>{% endif %}
+    </form>
+
+    <div class="divider"></div>
+    <div class="small strong">Existing meal slots</div>
+    <div class="stack" style="margin-top:8px">
+      {% for slot in slots %}
+        <div class="row-between">
+          <span>{{ slot.get_name_display }} <span class="tiny muted">{{ slot.start_time|time:"H:i" }}–{{ slot.end_time|time:"H:i" }}</span></span>
+          <a class="tiny" href="{% url 'web:manager-data' %}?slot={{ slot.pk }}">Edit</a>
+        </div>
+      {% empty %}
+        <div class="empty">No meal slots yet. Add breakfast, lunch, snacks and dinner.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Add a dish</div>
+    <form method="post" class="stack" style="margin-top:12px">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="dish-save">
+      {{ dish_form.as_p }}
+      <button class="btn btn-primary" type="submit">Save dish</button>
+    </form>
+
+    <div class="divider"></div>
+    <div class="small strong">Dish catalogue</div>
+    <div class="stack" style="margin-top:8px">
+      {% for dish in dishes %}
+        <div class="row-between">
+          <span>{{ dish.name }} <span class="tiny muted">{{ dish.get_category_display }} · {{ dish.get_diet_type_display }}</span></span>
+          <span class="tiny {% if dish.is_active %}muted{% else %}warn{% endif %}">{% if dish.is_active %}active{% else %}inactive{% endif %}</span>
+        </div>
+      {% empty %}
+        <div class="empty">No dishes yet.</div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

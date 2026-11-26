@@ -1,0 +1,51 @@
+{% load messlab_extras %}
+<a class="side-link {% if active == 'dashboard' %}active{% endif %}" href="{% url 'web:manager-dashboard' %}">
+  <span class="ico" aria-hidden="true">📊</span><span>Dashboard</span>
+</a>
+<a class="side-link {% if active == 'plan' %}active{% endif %}" href="{% url 'web:manager-plan' %}">
+  <span class="ico" aria-hidden="true">📋</span><span>Preparation plan</span>
+</a>
+<a class="side-link {% if active == 'live' %}active{% endif %}" href="{% url 'web:manager-live' %}">
+  <span class="ico" aria-hidden="true">🟢</span><span>Live service</span>
+</a>
+<a class="side-link {% if active == 'waste' %}active{% endif %}" href="{% url 'web:manager-waste' %}">
+  <span class="ico" aria-hidden="true">🗑️</span><span>Waste analytics</span>
+</a>
+<a class="side-link {% if active == 'waste' %}active{% endif %}" href="{% url 'web:manager-waste-entry' %}">
+  <span class="ico" aria-hidden="true">📝</span><span>Record waste</span>
+</a>
+<a class="side-link {% if active == 'close' %}active{% endif %}" href="{% url 'web:manager-close-day' %}">
+  <span class="ico" aria-hidden="true">🔒</span><span>Close service day</span>
+</a>
+<a class="side-link {% if active == 'impact' %}active{% endif %}" href="{% url 'web:manager-impact' %}">
+  <span class="ico" aria-hidden="true">🌍</span><span>Impact</span>
+</a>
+<a class="side-link {% if active == 'menu' %}active{% endif %}" href="{% url 'web:manager-menu' %}">
+  <span class="ico" aria-hidden="true">🍲</span><span>Menu insights</span>
+</a>
+<a class="side-link {% if active == 'menu-day' %}active{% endif %}" href="{% url 'web:manager-menu-day' %}">
+  <span class="ico" aria-hidden="true">📅</span><span>Daily menu</span>
+</a>
+<a class="side-link {% if active == 'menu-manage' %}active{% endif %}" href="{% url 'web:manager-menu-manage' %}">
+  <span class="ico" aria-hidden="true">✏️</span><span>Menu manager</span>
+</a>
+<a class="side-link {% if active == 'data' %}active{% endif %}" href="{% url 'web:manager-data' %}">
+  <span class="ico" aria-hidden="true">➕</span><span>Add data</span>
+</a>
+<a class="side-link {% if active == 'model' %}active{% endif %}" href="{% url 'web:manager-model' %}">
+  <span class="ico" aria-hidden="true">🧠</span><span>Model health</span>
+</a>
+<a class="side-link {% if active == 'import' %}active{% endif %}" href="{% url 'web:manager-import' %}">
+  <span class="ico" aria-hidden="true">📥</span><span>Import data</span>
+</a>
+{% if perms_users_view %}
+<a class="side-link {% if active == 'users' %}active{% endif %}" href="{% url 'web:manager-users' %}">
+  <span class="ico" aria-hidden="true">👥</span><span>Accounts</span>
+</a>
+{% endif %}
+{% if perms_audit_view %}
+<a class="side-link {% if active == 'audit' %}active{% endif %}" href="{% url 'web:manager-audit' %}">
+  <span class="ico" aria-hidden="true">🕘</span><span>Account audit</span>
+</a>
+{% endif %}
+

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Live service · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Service · {{ date|date:"l, d M Y" }}</p>
+    <h1>Live service</h1>
+    <p>Declared intents versus actual check-ins, with a run-out estimate per dish. Refresh after the counter updates.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-export' %}?kind=plan&date={{ date|date:'Y-m-d' }}">⬇ Plan CSV</a>
+    <a class="btn btn-primary" href="{% url 'web:manager-plan' %}?date={{ date|date:'Y-m-d' }}">Prep plan</a>
+  </div>
+</div>
+
+<div class="row wrap" style="margin-bottom:14px">
+  {% for s in slots %}
+    <a class="btn btn-sm {% if selected.meal.pk == s.pk %}btn-primary{% endif %}" href="?date={{ date|date:'Y-m-d' }}&meal={{ s.name }}">
+      {{ s.name|meal_icon }} {{ s.get_name_display }}
+    </a>
+  {% endfor %}
+  <span class="tiny muted">Showing {{ selected.meal.get_name_display }} · {{ selected.meal.start_time|time:"H:i" }}–{{ selected.meal.end_time|time:"H:i" }}</span>
+</div>
+
+{% if selected %}
+  <div class="kpi-row">
+    <div class="kpi accent">
+      <div class="label">Check-ins</div>
+      <div class="value">{{ selected.checkins }}</div>
+      <div class="delta">{{ selected.attendance_pct }}% of {{ selected.predicted_participants }} predicted</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Coming (intent)</div>
+      <div class="value">{{ selected.intents.POSITIVE }}</div>
+      <div class="delta">{{ selected.intents.YES }} yes · {{ selected.intents.MAYBE }} maybe</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Skipping</div>
+      <div class="value">{{ selected.intents.NO }}</div>
+      <div class="delta">notified skips reduce cooking</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Last 30 min</div>
+      <div class="value">{{ selected.recent_30min }}</div>
+      <div class="delta">{{ selected.crowd_level|level_label }} counter load ({{ selected.crowd_risk|ratio_pct }})</div>
+    </div>
+  </div>
+
+  <div class="split" style="margin-top:16px">
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Dish status</div>
+          <div class="card-sub">Consumed estimate = check-ins × average kg × forecast dish share</div>
+        </div>
+        {% if selected.has_plan %}
+          <span class="pill neutral">{{ selected.dishes|length }} dishes</span>
+        {% endif %}
+      </div>
+
+      {% if selected.dishes %}
+        <div class="mtable" style="--mcols:minmax(0,1.35fr) repeat(4,minmax(0,.72fr)) auto">
+          <div class="mhead"><span>Dish</span><span>Prepared</span><span>Consumed est.</span><span>Remaining</span><span>Need</span><span>Status</span></div>
+          {% for dish in selected.dishes %}
+            <div class="mrow">
+              <div class="mcell main">
+                <div class="strong">{{ dish.dish }}</div>
+                <div class="sub">{{ dish.share_pct }}% of forecast demand</div>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Prepared</span>
+                <span class="num">{{ dish.prepared_kg|one_decimal }} kg</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Consumed est.</span>
+                <span class="num muted">{{ dish.consumed_est_kg|one_decimal }} kg</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Remaining</span>
+                <span class="num {% if dish.runout_risk %}bad{% else %}good{% endif %}">{{ dish.remaining_kg|one_decimal }} kg</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Still needed</span>
+                <span class="num muted">{{ dish.expected_need_kg|one_decimal }} kg</span>
+              </div>
+              <div class="actions">
+                {% if dish.runout_risk %}
+                  <span class="pill bad">+{{ dish.suggested_extra_kg|one_decimal }} kg</span>
+                {% else %}
+                  <span class="pill good">OK</span>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty"><span class="emoji">🍽️</span>No preparation plan for this meal. Generate a plan first.</div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Run-out alerts</div>
+          <div class="card-sub">Act within the next 15 minutes</div>
+        </div>
+      </div>
+      <div class="stack">
+        {% for alert in selected.alerts %}
+          <div class="alert {{ alert.severity }}">
+            <span class="ico">{% if alert.severity == 'high' %}🚨{% elif alert.severity == 'medium' %}⚠️{% else %}ℹ️{% endif %}</span>
+            <div>
+              {% if alert.dish %}<div class="small strong">{{ alert.dish }}</div>{% endif %}
+              <div class="tiny">{{ alert.message }}</div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty"><span class="emoji">✅</span>No run-out risk right now.</div>
+        {% endfor %}
+      </div>
+      <div class="assumption">Run-out is an estimate from declared intents, recent check-ins and the dish-demand forecast. It does not measure the serving counter directly.</div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Arrival heatmap · {{ selected.meal.get_name_display }}</div>
+        <div class="card-sub">Average arrivals per 30-minute bucket over the last {{ peak.lookback_days }} days</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#e5f1e9"></i>Low</span>
+        <span><i style="background:#f4dca9"></i>Medium</span>
+        <span><i style="background:#e8b3a9"></i>High</span>
+      </div>
+    </div>
+    {% if peak.heatmap %}
+      <div class="scroll-x">
+        <div class="heat" style="--buckets:{{ peak.heatmap_labels|length }};min-width:480px">
+          <div class="heat-row">
+            <span></span>
+            {% for label in peak.heatmap_labels %}<span class="heat-head">{{ label }}</span>{% endfor %}
+          </div>
+          {% for day in peak.heatmap %}
+            <div class="heat-row">
+              <span class="heat-label">{{ day.label }}</span>
+              {% for cell in day.cells %}
+                <span class="heat-cell {{ cell.level }}" title="{{ day.label }} {{ cell.label }} · {{ cell.count }} avg arrivals"></span>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="row-between" style="margin-top:12px">
+        <div class="tiny muted">Peak risk {{ peak.max_risk|ratio_pct }}. {% if peak.suggest_extra_counters %}Open {{ peak.suggest_extra_counters }} extra counter(s) at peak.{% else %}Current counters cover the observed peak.{% endif %}</div>
+        <div class="tag-list">
+          {% for hostel in peak.top_hostels %}
+            <span class="pill neutral">{{ hostel.hostel }} · {{ hostel.share }}%</span>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="empty"><span class="emoji">🔥</span>Not enough check-in history for a heatmap yet.</div>
+    {% endif %}
+  </section>
+{% else %}
+  <div class="empty"><span class="emoji">🟢</span>No meal selected.</div>
+{% endif %}
+{% endblock %}

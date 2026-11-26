@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Supervisor" %} · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{% blocktranslate with when=date|date:"l, d M Y" %}Shift · {{ when }}{% endblocktranslate %}</p>
+    <h1>{% translate "Supervisor desk" %}</h1>
+    <p>{% translate "Live service, staff feedback and the actions that need a human decision." %}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:staff-scan' %}">📷 {% translate "Scan check-in" %}</a>
+    {% if perms_users_view %}
+      <a class="btn" href="{% url 'web:manager-users' %}">👥 {% translate "Accounts" %}</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpi-row">
+  {% for row in live %}
+    <div class="kpi {% if forloop.first %}accent{% endif %}">
+      <div class="label">{{ row.meal.get_name_display }}</div>
+      <div class="value">{{ row.checkins }}</div>
+      <div class="delta">{% blocktranslate with coming=row.intents.POSITIVE pct=row.attendance_pct %}{{ coming }} coming · {{ pct }}% of forecast{% endblocktranslate %}</div>
+    </div>
+  {% endfor %}
+  <div class="kpi">
+    <div class="label">{% translate "Open feedback" %}</div>
+    <div class="value">{{ open_count }}</div>
+    <div class="delta">
+      {% for label, count in open_by_kind %}{{ label }} {{ count }}{% if not forloop.last %} · {% endif %}{% endfor %}
+    </div>
+  </div>
+</div>
+
+<section class="card" style="margin-top:16px">
+  <div class="card-head">
+    <div>
+      <div class="card-title">{% translate "Preparation today" %}</div>
+      <div class="card-sub">{% translate "Approved kilograms compared with check-ins so far" %}</div>
+    </div>
+  </div>
+  {% if prep %}
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>{% translate "Meal" %}</th>
+            <th>{% translate "Dishes" %}</th>
+            <th>{% translate "Planned" %}</th>
+            <th>{% translate "Checked in" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in prep %}
+            <tr>
+              <td><strong>{{ row.meal.get_name_display }}</strong></td>
+              <td>{{ row.dishes|length }}</td>
+              <td class="mono">{{ row.total_kg|floatformat:1 }} kg</td>
+              <td>{{ row.served }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><span class="emoji">📋</span>{% translate "No approved prep sheet for today yet." %}</div>
+  {% endif %}
+</section>
+
+<section class="card" style="margin-top:16px">
+  <div class="card-head">
+    <div>
+      <div class="card-title">{% translate "Staff feedback" %}</div>
+      <div class="card-sub">{% translate "Opinions, needs and issues from the kitchen floor" %}</div>
+    </div>
+  </div>
+  <div class="stack">
+    {% for item in feedback %}
+      <article class="card" style="box-shadow:none;border:1px solid #e6ece8">
+        <div class="row-between">
+          <div>
+            <span class="pill neutral">{{ item.get_kind_display }}</span>
+            <span class="tiny muted" style="margin-left:8px">{{ item.created_at|date:"d M H:i" }}</span>
+          </div>
+          <span class="pill {% if item.status == 'resolved' %}good{% elif item.status == 'seen' %}warn{% else %}bad{% endif %}">
+            {{ item.get_status_display }}
+          </span>
+        </div>
+        <p class="small" style="margin:8px 0">{{ item.message }}</p>
+        <form method="post" action="{% url 'web:supervisor-feedback-update' item.pk %}" class="stack">
+          {% csrf_token %}
+          <label class="tiny strong" for="note-{{ item.pk }}">{% translate "Supervisor note" %}</label>
+          <textarea id="note-{{ item.pk }}" name="supervisor_note" rows="2" maxlength="2000"
+                    placeholder="{% translate 'What did you do about it?' %}">{{ item.supervisor_note }}</textarea>
+          <div class="row">
+            <select name="status" aria-label="{% translate 'Status' %}">
+              {% for value, label in statuses %}
+                <option value="{{ value }}" {% if item.status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-sm btn-primary" type="submit">{% translate "Save" %}</button>
+          </div>
+        </form>
+      </article>
+    {% empty %}
+      <div class="empty"><span class="emoji">✅</span>{% translate "No feedback yet." %}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

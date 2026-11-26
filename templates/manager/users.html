@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Accounts · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Administration</p>
+    <h1>Accounts</h1>
+    <p>{{ total }} account{{ total|pluralize }}. Managers see pseudonymous codes, never student names.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-audit' %}">🕘 Audit log</a>
+  </div>
+</div>
+
+{% if not viewer_is_admin %}
+  <div class="alert info" style="margin-bottom:14px">
+    <span class="ico">🔒</span>
+    <span>Privacy mode: names and full emails are hidden. Use the student code to identify an account.</span>
+  </div>
+{% endif %}
+
+<form method="get" class="card" style="margin-bottom:14px">
+  <div class="row wrap" style="align-items:end">
+    <div class="field" style="flex:1 1 220px">
+      <label for="q">Search</label>
+      <input class="input" id="q" name="q" value="{{ query }}" placeholder="Code, username or email">
+    </div>
+    <div class="field">
+      <label for="role">Role</label>
+      <select class="select" id="role" name="role">
+        <option value="">All roles</option>
+        {% for value, label in role_choices %}
+          <option value="{{ value }}" {% if value == role_filter %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="status">Status</label>
+      <select class="select" id="status" name="status">
+        <option value="">Any</option>
+        <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Disabled / pending</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Filter</button>
+    {% if query or role_filter or status_filter %}
+      <a class="btn" href="{% url 'web:manager-users' %}">Clear</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if rows %}
+  <div class="card">
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Role</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>
+                <div class="code">{{ row.code }}</div>
+                {% if row.name %}<div class="tiny muted">{{ row.name }}</div>{% endif %}
+              </td>
+              <td><span class="pill neutral">{{ row.role_label }}</span></td>
+              <td class="tiny">{{ row.email|default:"—" }}</td>
+              <td>
+                {% if row.pending %}
+                  <span class="pill warn">Pending</span>
+                {% elif row.active %}
+                  <span class="pill good">Active</span>
+                {% else %}
+                  <span class="pill bad">Disabled</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="row wrap" style="gap:6px">
+                  {% if can_change_roles and row.can_manage %}
+                    <form method="post" action="{% url 'web:manager-user-role' row.user.pk %}" class="inline-form">
+                      {% csrf_token %}
+                      <label class="tiny muted" for="role-{{ row.user.pk }}">Role</label>
+                      <select class="select" id="role-{{ row.user.pk }}" name="role">
+                        {% for value, label in role_choices %}
+                          <option value="{{ value }}" {% if value == row.role %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                      <button class="btn btn-sm" type="submit">Save</button>
+                    </form>
+                  {% endif %}
+                  {% if can_manage and row.can_manage %}
+                    <form method="post" action="{% url 'web:manager-user-active' row.user.pk %}"
+                          {% if row.active %}data-confirm="Disable this account? They will be signed out immediately."{% endif %}>
+                      {% csrf_token %}
+                      <input type="hidden" name="active" value="{% if row.active %}0{% else %}1{% endif %}">
+                      <button class="btn btn-sm {% if row.active %}btn-ghost{% endif %}" type="submit">
+                        {% if row.active %}Disable{% else %}Enable{% endif %}
+                      </button>
+                    </form>
+                  {% endif %}
+                  {% if not row.can_manage %}
+                    <span class="tiny muted">Protected</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page.has_other_pages %}
+      <div class="row wrap" style="justify-content:space-between;margin-top:12px">
+        <span class="tiny muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+        <div class="row" style="gap:6px">
+          {% if page.has_previous %}
+            <a class="btn btn-sm" href="?page={{ page.previous_page_number }}&q={{ query|urlencode }}&role={{ role_filter }}&status={{ status_filter }}">← Previous</a>
+          {% endif %}
+          {% if page.has_next %}
+            <a class="btn btn-sm" href="?page={{ page.next_page_number }}&q={{ query|urlencode }}&role={{ role_filter }}&status={{ status_filter }}">Next →</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="empty"><span class="emoji">👥</span>No accounts match these filters.</div>
+{% endif %}
+{% endblock %}

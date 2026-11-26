@@ -1,0 +1,65 @@
+"""Server-rendered page routes."""
+from django.urls import path
+
+from . import web_views as views
+
+app_name = "web"
+
+urlpatterns = [
+    path("", views.home, name="home"),
+    path("login/", views.otp_login, name="login"),
+    path("login/password/", views.MessLabLoginView.as_view(), name="login-password"),
+    path("register/", views.register, name="register"),
+    path("privacy/", views.privacy, name="privacy"),
+    path("privacy/export/", views.privacy_export, name="privacy-export"),
+    path("privacy/delete/", views.privacy_delete, name="privacy-delete"),
+    path("logout/", views.MessLabLogoutView.as_view(), name="logout"),
+    path("student/", views.student_home, name="student-home"),
+    path("student/plan/", views.student_plan, name="student-plan"),
+    path("student/intent/", views.student_intent, name="student-intent"),
+    path("student/feedback/", views.student_feedback, name="student-feedback"),
+    path("student/checkin/", views.student_checkin, name="student-checkin"),
+    path("student/pass/qr.svg", views.student_pass_qr, name="student-pass-qr"),
+    path("student/rewards/", views.student_rewards, name="student-rewards"),
+    path("staff/", views.staff_home, name="staff-home"),
+    path("staff/scan/", views.staff_scan, name="staff-scan"),
+    path("supervisor/", views.supervisor_home, name="supervisor-home"),
+    path(
+        "supervisor/feedback/<int:pk>/",
+        views.supervisor_feedback_update,
+        name="supervisor-feedback-update",
+    ),
+    path("manager/", views.manager_dashboard, name="manager-dashboard"),
+    path("manager/plan/", views.manager_plan, name="manager-plan"),
+    path("manager/live/", views.manager_live, name="manager-live"),
+    path("manager/waste/", views.manager_waste, name="manager-waste"),
+    path("manager/waste/entry/", views.manager_waste_entry, name="manager-waste-entry"),
+    path("manager/close-day/", views.manager_close_day, name="manager-close-day"),
+    path("manager/impact/", views.manager_impact, name="manager-impact"),
+    path("manager/menu/", views.manager_menu, name="manager-menu"),
+    path("manager/menu/day/", views.manager_menu_day, name="manager-menu-day"),
+    path("manager/menu/manage/", views.manager_menu_manage, name="manager-menu-manage"),
+    path("manager/data/", views.manager_data, name="manager-data"),
+    path("manager/model/", views.manager_model, name="manager-model"),
+    path("manager/import/", views.manager_import, name="manager-import"),
+    path("manager/users/", views.manager_users, name="manager-users"),
+    path(
+        "manager/users/<int:pk>/role/",
+        views.manager_user_role,
+        name="manager-user-role",
+    ),
+    path(
+        "manager/users/<int:pk>/active/",
+        views.manager_user_active,
+        name="manager-user-active",
+    ),
+    path("manager/audit/", views.manager_audit, name="manager-audit"),
+    path("manager/plan/<int:pk>/approve/", views.manager_approve, name="manager-approve"),
+    path("manager/plan/<int:pk>/override/", views.manager_override, name="manager-override"),
+    path("manager/plan/approve-all/", views.manager_approve_all, name="manager-approve-all"),
+    path("manager/export/", views.manager_export, name="manager-export"),
+    path("manager/retrain/", views.manager_retrain, name="manager-retrain"),
+    path("manifest.webmanifest", views.manifest, name="manifest"),
+    path("sw.js", views.service_worker, name="service-worker"),
+    path("offline/", views.offline, name="offline"),
+]

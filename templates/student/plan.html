@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}My weekly plan · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Student · set once</p>
+    <h1>My weekly plan</h1>
+    <p>This is the only setup MessLab asks for. Every meal is pre-filled from it; override any meal with one tap on Today.</p>
+  </div>
+  <div class="page-actions">
+    <span class="pill info">{{ profile.get_diet_display }}</span>
+    <span class="pill neutral">{{ profile.get_hostel_display }}</span>
+  </div>
+</div>
+
+{% if profile.allergies %}
+  <div class="alert info" style="margin-bottom:14px"><span class="ico">⚠️</span><span><strong>Allergy note:</strong> {{ profile.allergies }}. MessLab shows a warning when a menu item name matches; always check ingredients at the counter.</span></div>
+{% endif %}
+
+<form method="post" action="{% url 'web:student-plan' %}" class="stack-lg">
+  {% csrf_token %}
+  <div class="grid grid-2">
+    {% for day, label in weekdays %}
+      {% with day_plan=plan|get_item:day %}
+        <details class="plan-day" {% if day < 5 %}open{% endif %}>
+          <summary>
+            <span>{{ label }}</span>
+            <span class="tiny muted">{% if day == 6 %}Sunday late breakfast{% else %}Tap to edit{% endif %}</span>
+          </summary>
+          <div class="plan-meals">
+            {% for meal in meals %}
+              <div class="plan-meal">
+                <div class="pm-label">{{ meal|meal_icon }} {{ meal|title }}</div>
+                <div class="plan-select" role="radiogroup" aria-label="{{ label }} {{ meal }}">
+                  <label>
+                    <input type="radio" name="plan_{{ day }}_{{ meal }}" value="eat" {% if day_plan|get_item:meal == "eat" %}checked{% endif %}>
+                    <span>Eat</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="plan_{{ day }}_{{ meal }}" value="skip" {% if day_plan|get_item:meal == "skip" %}checked{% endif %}>
+                    <span>Skip</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="plan_{{ day }}_{{ meal }}" value="auto" {% if day_plan|get_item:meal == "auto" %}checked{% endif %}>
+                    <span>Auto</span>
+                  </label>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </details>
+      {% endwith %}
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="row-between">
+      <div>
+        <div class="card-title">What “Auto” means</div>
+        <div class="card-sub">MessLab looks at your last four weeks for that weekday and meal. If you usually skip Sunday breakfast, Auto pre-fills Skip — you can always override.</div>
+      </div>
+      <button class="btn btn-primary" type="submit">Save weekly plan</button>
+    </div>
+  </div>
+</form>
+
+<div class="card" style="margin-top:14px">
+  <div class="card-title">Your defaults today</div>
+  <div class="grid grid-4" style="margin-top:10px">
+    {% for meal in meals %}
+      <div class="kpi" style="box-shadow:none">
+        <div class="label">{{ meal|meal_icon }} {{ meal|title }}</div>
+        <div class="value" style="font-size:1.1rem">{{ plan|get_item:today_index|get_item:meal|default:"auto"|title }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="assumption">Plan changes apply immediately to today and future auto-prefills. Explicit taps on Today always win.</div>
+</div>
+{% endblock %}

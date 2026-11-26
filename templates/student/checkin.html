@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load messlab_extras static %}
+{% block title %}Meal check-in · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Student · {{ date|date:"l, d M" }}</p>
+    <h1>Check in</h1>
+    <p>Show your signed pass at the counter. The pass is checked on the server, expires quickly and carries no name or student code.</p>
+  </div>
+  <span class="pill info">Signed QR pass</span>
+</div>
+
+<section class="card" style="margin-bottom:16px">
+  <div class="split" style="align-items:center">
+    <div>
+      <div class="card-title">Your check-in pass</div>
+      <p class="small" style="margin:6px 0 10px">
+        The canteen scans this code. It is tied to your account and today's service date, so a screenshot from another day will not work.
+      </p>
+      {% if open_slot %}
+        <span class="pill good">{{ open_slot.get_name_display }} is being served now</span>
+      {% else %}
+        <span class="pill neutral">No meal is being served right now</span>
+      {% endif %}
+      <p class="tiny muted" style="margin-top:10px">
+        The code rotates every {{ pass_seconds }} seconds and is only valid for
+        {% if pass_meal %}<strong>{{ pass_meal.get_name_display }}</strong>{% else %}one meal{% endif %}.
+        This page refreshes it automatically.
+      </p>
+    </div>
+    <div style="text-align:center">
+      <img data-pass-qr data-refresh="{{ pass_seconds }}"
+           src="{% url 'web:student-pass-qr' %}" alt="Your signed check-in pass" width="200" height="200"
+           style="background:#fff;padding:8px;border-radius:12px;border:1px solid #e6ece8">
+      <div class="tiny muted" style="margin-top:6px">Show this at the counter</div>
+    </div>
+  </div>
+</section>
+
+<div class="stack-lg">
+  {% for row in slots %}
+    <section class="card">
+      <div class="meal-head">
+        <div class="row" style="align-items:flex-start">
+          <div class="meal-icon" aria-hidden="true">{{ row.slot.name|meal_icon }}</div>
+          <div>
+            <div class="meal-title">{{ row.slot.get_name_display }}</div>
+            <div class="meal-time">{{ row.slot.start_time|time:"H:i" }}–{{ row.slot.end_time|time:"H:i" }} · {{ row.slot.counters }} counters</div>
+          </div>
+        </div>
+        {% if row.checkin %}
+          <span class="pill good">Checked in {{ row.checkin.timestamp|time:"H:i" }}</span>
+        {% elif row.intent.status == "NO" %}
+          <span class="pill bad">You said skipping</span>
+        {% else %}
+          <span class="pill neutral">{{ row.intent.status|title }}</span>
+        {% endif %}
+      </div>
+
+      {% if row.checkin %}
+        <div class="alert info" style="margin-top:12px">
+          <span class="ico">✅</span>
+          <span>You checked in at {{ row.checkin.timestamp|time:"H:i" }}. Dishes recorded:
+            {% for dish in row.checkin.dishes_taken.all %}{{ dish.name }}{% if not forloop.last %}, {% endif %}{% empty %}not specified{% endfor %}.
+            {% if row.checkin.clean_plate %}Clean plate bonus applied.{% endif %}
+          </span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <a class="btn" href="{% url 'web:student-home' %}">Back to today</a>
+        </div>
+      {% elif row.menu %}
+        <div class="stack" style="margin-top:12px">
+          <div class="small strong">Show your pass at the counter</div>
+          <p class="small muted">The canteen scans the code above. Check-in is recorded on the server with the real scan time.</p>
+        </div>
+      {% else %}
+        <div class="empty" style="margin-top:12px"><span class="emoji">🍽️</span>No menu for this meal yet.</div>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'js/pass.js' %}" defer></script>
+{% endblock %}

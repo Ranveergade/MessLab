@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Complaints & grievances · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess Committee · Grievance redressal</p>
+    <h1>Complaints & grievances</h1>
+    <p>
+      Report a menu deviation, missing item, portion issue, quality or hygiene concern.
+      The committee records it, raises it with the mess operator and tracks the resolution.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'messops:sop' %}#complaints">Read the SOP process</a>
+  </div>
+</div>
+
+<div class="split">
+  <div class="stack-lg">
+    <section class="card">
+      <div class="card-title">Raise a complaint</div>
+      <p class="small muted" style="margin-top:6px">
+        Use the committee channel rather than approaching the operator individually, so every
+        issue is recorded and followed up consistently.
+      </p>
+      <form method="post" class="stack" style="margin-top:12px">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+          <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ form.non_field_errors|join:", " }}</span></div>
+        {% endif %}
+        {% for field in form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="help" style="color:#b42318">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button class="btn btn-primary" type="submit">Submit complaint</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Your complaints</div>
+          <div class="card-sub">Newest first · the committee updates each status</div>
+        </div>
+        <span class="pill neutral">{{ complaints|length }}</span>
+      </div>
+      <div class="stack" style="margin-top:10px">
+        {% for complaint in complaints %}
+          <div style="padding:12px 0;border-bottom:1px solid #eef2ef">
+            <div class="row-between wrap">
+              <div>
+                <div class="small strong">{{ complaint.reference }} · {{ complaint.get_category_display }}</div>
+                <div class="tiny muted">
+                  {{ complaint.created_at|date:"d M Y, H:i" }}
+                  {% if complaint.service_date %} · meal date {{ complaint.service_date|date:"d M Y" }}{% endif %}
+                  {% if complaint.meal %} · {{ complaint.meal.get_name_display }}{% endif %}
+                </div>
+              </div>
+              <span class="pill {% if complaint.status == 'resolved' or complaint.status == 'closed' %}good{% elif complaint.status == 'escalated' %}bad{% elif complaint.status == 'acknowledged' %}info{% else %}warn{% endif %}">
+                {{ complaint.get_status_display }}
+              </span>
+            </div>
+            <p class="small" style="margin-top:6px;white-space:pre-line">{{ complaint.description }}</p>
+            {% if complaint.resolution %}
+              <div class="alert info" style="margin-top:8px">
+                <span class="ico">✅</span>
+                <span><strong>Resolution:</strong> {{ complaint.resolution }}</span>
+              </div>
+            {% endif %}
+            {% if complaint.is_escalated %}
+              <div class="tiny muted" style="margin-top:6px">
+                Referred to the Chairperson – Hostel Residence for a decision.
+              </div>
+            {% endif %}
+          </div>
+        {% empty %}
+          <div class="empty"><span class="emoji">📣</span>You have not raised any complaints yet.</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="stack-lg">
+    <section class="card">
+      <div class="card-title">How it is handled</div>
+      <ol class="small muted" style="margin-top:10px;padding-left:18px">
+        <li>The committee records your complaint.</li>
+        <li>It is communicated to the mess operator.</li>
+        <li>Committee and operator agree corrective action.</li>
+        <li>The resolution is recorded against your complaint.</li>
+        <li>Unresolved or recurring issues go to the Chairperson – Hostel Residence.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Your representatives</div>
+      <div class="stack" style="margin-top:10px">
+        {% for member in composition.representatives %}
+          <div>
+            <div class="small strong">{{ member.display_name }}</div>
+            <div class="tiny muted">{{ member.get_program_display }}{% if member.display_email %} · {{ member.display_email }}{% endif %}</div>
+          </div>
+        {% empty %}
+          <p class="tiny muted">The committee roster is not published yet.</p>
+        {% endfor %}
+      </div>
+      {% if not composition.is_complete %}
+        <div class="tiny warn" style="margin-top:10px">
+          The SOP requires two UG and two PG representatives. The roster is being completed.
+        </div>
+      {% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

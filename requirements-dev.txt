@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Development-only helpers (not required to run the demo).
+coverage[toml]>=7.6

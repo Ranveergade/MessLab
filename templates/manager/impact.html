@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Impact · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Impact · {{ data.start|date:"d M" }} – {{ data.end|date:"d M Y" }}</p>
+    <h1>Before vs after MessLab</h1>
+    <p>The same meals, two preparation policies: the traditional baseline versus the model recommendation. Both are scored against what students actually consumed.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-export' %}?kind=impact&days={{ data.days }}&date={{ data.end|date:'Y-m-d' }}">⬇ CSV</a>
+    <button class="btn" type="button" data-print>🖨 Print</button>
+  </div>
+</div>
+
+<div class="row wrap" style="margin-bottom:14px">
+  {% for option in "7,30,90,365"|split_csv %}
+    <a class="btn btn-sm {% if data.days == option|add:0 %}btn-primary{% endif %}" href="?days={{ option }}">{{ option }} days</a>
+  {% endfor %}
+  <span class="tiny muted">{{ data.matched_rows }} matched dish rows · {{ data.meals }} meal services</span>
+</div>
+
+{% if data.empty %}
+  <div class="empty">
+    <span class="emoji">📊</span>
+    No closed days with both a preparation plan and a waste log in this window.
+    Close a service day from the manager dashboard, or widen the window.
+  </div>
+{% else %}
+  <div class="kpi-row">
+    <div class="kpi accent">
+      <div class="label">Waste avoided</div>
+      <div class="value">{{ data.avoided.waste_kg|one_decimal }} <small>kg</small></div>
+      <div class="delta">{{ data.avoided.waste_pct }}% less than the baseline</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Cost avoided</div>
+      <div class="value">{{ data.avoided.cost_inr|money }}</div>
+      <div class="delta">at {{ data.assumptions.cost_per_kg_inr|money }}/kg</div>
+    </div>
+    <div class="kpi">
+      <div class="label">CO₂e avoided</div>
+      <div class="value">{{ data.avoided.co2e_kg|one_decimal }} <small>kg</small></div>
+      <div class="delta">at {{ data.assumptions.co2e_per_kg }} kg CO₂e/kg</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Participants served</div>
+      <div class="value">{{ data.participants }}</div>
+      <div class="delta">{{ data.consumed_kg|one_decimal }} kg consumed</div>
+    </div>
+  </div>
+
+  <div class="split" style="margin-top:16px">
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Waste comparison</div>
+          <div class="card-sub">Matched dish rows only — plans without a waste log are excluded</div>
+        </div>
+      </div>
+
+      <div class="mtable" style="--mcols:minmax(0,1.4fr) repeat(3,minmax(0,.8fr))">
+        <div class="mhead"><span>Metric</span><span>Traditional</span><span>MessLab</span><span>Change</span></div>
+        <div class="mrow">
+          <div class="mcell main"><span class="strong">Prepared</span><div class="sub">kg cooked for the same meals</div></div>
+          <div class="mcell"><span class="cell-label">Traditional</span><span class="num muted">{{ data.without.prepared_kg|one_decimal }} kg</span></div>
+          <div class="mcell"><span class="cell-label">MessLab</span><span class="num">{{ data.with.prepared_kg|one_decimal }} kg</span></div>
+          <div class="actions"><span class="pill good">−{{ data.avoided.prepared_kg|one_decimal }} kg</span></div>
+        </div>
+        <div class="mrow">
+          <div class="mcell main"><span class="strong">Wasted</span><div class="sub">prepared minus consumed</div></div>
+          <div class="mcell"><span class="cell-label">Traditional</span><span class="num muted">{{ data.without.waste_kg|one_decimal }} kg</span></div>
+          <div class="mcell"><span class="cell-label">MessLab</span><span class="num">{{ data.with.waste_kg|one_decimal }} kg</span></div>
+          <div class="actions"><span class="pill good">−{{ data.avoided.waste_kg|one_decimal }} kg</span></div>
+        </div>
+        <div class="mrow">
+          <div class="mcell main"><span class="strong">Cost</span><div class="sub">waste × procurement rate</div></div>
+          <div class="mcell"><span class="cell-label">Traditional</span><span class="num muted">{{ data.without.cost_inr|money }}</span></div>
+          <div class="mcell"><span class="cell-label">MessLab</span><span class="num">{{ data.with.cost_inr|money }}</span></div>
+          <div class="actions"><span class="pill good">−{{ data.avoided.cost_inr|money }}</span></div>
+        </div>
+        <div class="mrow">
+          <div class="mcell main"><span class="strong">Near-shortage services</span><div class="sub">consumed ≥ {{ data.assumptions.shortage_threshold|ratio_pct }} of prepared</div></div>
+          <div class="mcell"><span class="cell-label">Traditional</span><span class="num muted">{{ data.without.shortage_incidents }}</span></div>
+          <div class="mcell"><span class="cell-label">MessLab</span><span class="num">{{ data.with.shortage_incidents }}</span></div>
+          <div class="actions">
+            <span class="pill {% if data.with.shortage_incidents > data.without.shortage_incidents %}bad{% else %}good{% endif %}">
+              {% if data.avoided.shortage_delta > 0 %}+{% endif %}{{ data.avoided.shortage_delta }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="assumption">
+        “Traditional” is the seeded historical baseline: what the mess cooked before MessLab, including its 15–25% over-preparation habit. “MessLab” is the model recommendation with the safety buffer. Both are scored against the same actual consumption.
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Share of baseline waste removed</div>
+      <div class="row" style="gap:18px;margin-top:14px;flex-wrap:wrap">
+        <div class="donut-wrap">
+          <div class="donut" style="--p:{{ data.avoided.waste_pct }}"></div>
+          <div class="donut-label">{{ data.avoided.waste_pct }}%<small>avoided</small></div>
+        </div>
+        <div class="grow" style="min-width:160px">
+          <div class="small"><strong>{{ data.without.waste_kg|one_decimal }} kg</strong> would have been wasted.</div>
+          <div class="small" style="margin-top:4px"><strong>{{ data.with.waste_kg|one_decimal }} kg</strong> with MessLab.</div>
+          <div class="small good" style="margin-top:4px"><strong>{{ data.avoided.waste_kg|one_decimal }} kg</strong> avoided.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="stack">
+        <div class="row-between">
+          <span class="small">Meals in sample</span><span class="small mono">{{ data.meals }}</span>
+        </div>
+        <div class="row-between">
+          <span class="small">Matched dish rows</span><span class="small mono">{{ data.matched_rows }}</span>
+        </div>
+        <div class="row-between">
+          <span class="small">Consumed kg</span><span class="small mono">{{ data.consumed_kg|one_decimal }}</span>
+        </div>
+        <div class="row-between">
+          <span class="small">Service level</span><span class="small mono">{{ data.assumptions.service_level|ratio_pct }}</span>
+        </div>
+      </div>
+      <div class="assumption">
+        Avoided waste is a modelled counterfactual, not a procurement invoice. Cost and CO₂e are directional estimates using the assumptions shown.
+      </div>
+    </section>
+  </div>
+{% endif %}
+{% endblock %}

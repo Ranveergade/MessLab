@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Menu insights · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Menu · {{ data.start|date:"d M" }} – {{ data.end|date:"d M Y" }}</p>
+    <h1>Menu insights</h1>
+    <p>Which dishes earn their place on the menu, which are over-prepared, and where shortages cluster. Use this to rotate the menu, not to shame students.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-export' %}?kind=menu&days={{ data.days|default:30 }}&date={{ data.end|date:'Y-m-d' }}">⬇ CSV</a>
+    <button class="btn" type="button" data-print>🖨 Print</button>
+  </div>
+</div>
+
+<div class="row wrap" style="margin-bottom:14px">
+  {% for option in "7,30,90,365"|split_csv %}
+    <a class="btn btn-sm {% if data.days == option|add:0 %}btn-primary{% endif %}" href="?days={{ option }}">{{ option }} days</a>
+  {% endfor %}
+  <span class="tiny muted">{{ data.rows|length }} dishes tracked</span>
+</div>
+
+{% if data.empty %}
+  <div class="empty"><span class="emoji">🍲</span>No menu history in this window. Publish a menu first.</div>
+{% else %}
+  <div class="grid grid-3">
+    <section class="card">
+      <div class="card-title">⭐ Highest uptake</div>
+      <div class="card-sub">Consumed ÷ what an average participant could eat</div>
+      <div class="stack" style="margin-top:10px">
+        {% for row in data.stars %}
+          <div class="row-between">
+            <div>
+              <div class="small strong">{{ row.dish }}</div>
+              <div class="tiny muted">{{ row.category }} · {{ row.served }} servings</div>
+            </div>
+            <span class="pill good">{{ row.uptake_pct }}%</span>
+          </div>
+        {% empty %}
+          <div class="tiny muted">Not enough data yet.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">🔁 Consider rotating out</div>
+      <div class="card-sub">Low uptake or waste above 18%</div>
+      <div class="stack" style="margin-top:10px">
+        {% for row in data.rotate %}
+          <div class="row-between">
+            <div>
+              <div class="small strong">{{ row.dish }}</div>
+              <div class="tiny muted">{{ row.uptake_pct }}% uptake · {{ row.waste_pct }}% waste</div>
+            </div>
+            <span class="pill {% if row.waste_pct > 18 %}bad{% else %}warn{% endif %}">{{ row.wasted_kg|one_decimal }} kg</span>
+          </div>
+        {% empty %}
+          <div class="tiny muted">No weak dishes in this window. Nice.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">⚠️ Shortage-prone</div>
+      <div class="card-sub">Two or more near-shortage services</div>
+      <div class="stack" style="margin-top:10px">
+        {% for row in data.shortage %}
+          <div class="row-between">
+            <div>
+              <div class="small strong">{{ row.dish }}</div>
+              <div class="tiny muted">{{ row.shortages }} near-shortage services</div>
+            </div>
+            <span class="pill warn">{{ row.waste_pct }}% waste</span>
+          </div>
+        {% empty %}
+          <div class="tiny muted">No repeat shortage flags.</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Every dish</div>
+        <div class="card-sub">Uptake compares consumption with the expected portion for the participants served</div>
+      </div>
+    </div>
+    <div class="mtable" style="--mcols:minmax(0,1.4fr) repeat(4,minmax(0,.7fr)) auto">
+      <div class="mhead"><span>Dish</span><span>Served</span><span>Consumed</span><span>Uptake</span><span>Waste</span><span>Shortages</span></div>
+      {% for row in data.rows %}
+        <div class="mrow">
+          <div class="mcell main">
+            <div class="strong">{{ row.dish }}</div>
+            <div class="sub">{{ row.category }} · {{ row.diet }} · {{ row.portion_grams }}g portion</div>
+          </div>
+          <div class="mcell"><span class="cell-label">Served</span><span class="num muted">{{ row.served }}×</span></div>
+          <div class="mcell"><span class="cell-label">Consumed</span><span class="num">{{ row.consumed_kg|one_decimal }} kg</span></div>
+          <div class="mcell"><span class="cell-label">Uptake</span><span class="num {% if row.uptake_pct >= 70 %}good{% elif row.uptake_pct < 40 %}bad{% endif %}">{{ row.uptake_pct }}%</span></div>
+          <div class="mcell"><span class="cell-label">Waste</span><span class="num {% if row.waste_pct > 18 %}bad{% elif row.waste_pct > 10 %}warn{% endif %}">{{ row.waste_pct }}%</span></div>
+          <div class="actions">
+            {% if row.shortages %}
+              <span class="pill warn">{{ row.shortages }}</span>
+            {% else %}
+              <span class="pill good">0</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="assumption">
+      Uptake is capped at 150% to keep small-sample dishes readable. A low-uptake dish may simply be a niche dish; pair this view with student demand before removing it. 
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

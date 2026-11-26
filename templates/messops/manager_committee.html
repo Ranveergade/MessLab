@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Committee & reviews · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess Committee · Governance</p>
+    <h1>Committee & monthly reviews</h1>
+    <p>
+      Maintain the four student representatives, record the operator and chairperson, and minute
+      the monthly review meeting required by the SOP.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{% url 'messops:sop' %}#review">SOP §10 review meeting</a>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:16px">
+  <section class="card">
+    <div class="tiny muted strong">UG representatives</div>
+    <div class="card-title" style="margin-top:4px">{{ composition.ug_count }}/2</div>
+    <div class="tiny {% if composition.ug_count == 2 %}good{% else %}warn{% endif %}">
+      {% if composition.ug_count == 2 %}Composition met{% else %}Two UG representatives required{% endif %}
+    </div>
+  </section>
+  <section class="card">
+    <div class="tiny muted strong">PG representatives</div>
+    <div class="card-title" style="margin-top:4px">{{ composition.pg_count }}/2</div>
+    <div class="tiny {% if composition.pg_count == 2 %}good{% else %}warn{% endif %}">
+      {% if composition.pg_count == 2 %}Composition met{% else %}Two PG representatives required{% endif %}
+    </div>
+  </section>
+  <section class="card">
+    <div class="tiny muted strong">Chairperson – Hostel Residence</div>
+    <div class="card-title" style="margin-top:4px">
+      {% if composition.chairperson %}{{ composition.chairperson.display_name }}{% else %}Not recorded{% endif %}
+    </div>
+    <div class="tiny muted">Final authority on mess operations and disputes.</div>
+  </section>
+</div>
+
+<div class="split">
+  <div class="stack-lg">
+    <section class="card" id="roster">
+      <div class="card-head">
+        <div>
+          <div class="card-title">{% if editing %}Edit {{ editing.display_name }}{% else %}Add a committee member{% endif %}</div>
+          <div class="card-sub">Two UG and two PG student representatives, plus the chairperson and operator</div>
+        </div>
+        {% if editing %}<a class="btn btn-sm btn-ghost" href="{% url 'messops:manager-committee' %}#roster">Cancel</a>{% endif %}
+      </div>
+      <form method="post" class="stack" style="margin-top:12px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="member-save">
+        {% if editing %}<input type="hidden" name="member_id" value="{{ editing.pk }}">{% endif %}
+        {% if member_form.non_field_errors %}
+          <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ member_form.non_field_errors|join:", " }}</span></div>
+        {% endif %}
+        <div class="grid grid-2">
+          {% for field in member_form %}
+            <div class="field">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="help" style="color:#b42318">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" type="submit">{% if editing %}Save member{% else %}Add member{% endif %}</button>
+        </div>
+      </form>
+
+      <div class="divider"></div>
+      <div class="stack">
+        {% for member in composition.members %}
+          <div class="row-between wrap" style="padding:8px 0;border-bottom:1px solid #eef2ef">
+            <div>
+              <div class="small strong">{{ member.display_name }}</div>
+              <div class="tiny muted">
+                {{ member.get_role_display }} · {{ member.get_program_display }}
+                {% if member.display_email %} · {{ member.display_email }}{% endif %}
+                {% if member.term_end %} · term ends {{ member.term_end|date:"d M Y" }}{% endif %}
+              </div>
+            </div>
+            <div class="row">
+              <a class="btn btn-sm btn-ghost" href="{% url 'messops:manager-committee' %}?member={{ member.pk }}#roster">Edit</a>
+              <form method="post" class="js-no-loading">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="member-deactivate">
+                <input type="hidden" name="member_id" value="{{ member.pk }}">
+                <button class="btn btn-sm btn-ghost" type="submit">Deactivate</button>
+              </form>
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty"><span class="emoji">👥</span>No committee members recorded yet.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card" id="meetings">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Record a monthly review meeting</div>
+          <div class="card-sub">All four representatives and the mess operator attend</div>
+        </div>
+        <span class="pill info">{{ meetings|length }} recent</span>
+      </div>
+      <form method="post" class="stack" style="margin-top:12px">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="meeting-save">
+        {% if meeting_form.non_field_errors %}
+          <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ meeting_form.non_field_errors|join:", " }}</span></div>
+        {% endif %}
+        {% for field in meeting_form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="help" style="color:#b42318">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button class="btn btn-primary" type="submit">Save meeting minutes</button>
+      </form>
+    </section>
+  </div>
+
+  <aside class="stack-lg">
+    <section class="card">
+      <div class="card-title">Current menu cycle</div>
+      {% if cycle %}
+        <div class="row-between" style="margin-top:8px">
+          <strong>{{ cycle.label }}</strong>
+          <span class="pill {% if cycle.is_published %}good{% elif cycle.is_closed %}neutral{% else %}warn{% endif %}">{{ cycle.get_status_display }}</span>
+        </div>
+        <div class="tiny muted" style="margin-top:6px">
+          {% if cycle.accepts_preferences %}Student consultation is open.{% elif cycle.is_published %}The agreed menu is published.{% else %}Menu planning is in progress.{% endif %}
+        </div>
+        <div class="divider"></div>
+        <a class="btn btn-sm" href="{% url 'messops:manager-menu-cycle' %}?month={{ cycle.month|date:'Y-m' }}">Open the cycle</a>
+      {% else %}
+        <p class="tiny muted" style="margin-top:8px">No menu cycle has been created yet.</p>
+        <a class="btn btn-sm" href="{% url 'messops:manager-menu-cycle' %}">Create the first cycle</a>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-title">Recent meetings</div>
+      <div class="stack" style="margin-top:10px">
+        {% for meeting in meetings %}
+          <details style="padding:8px 0;border-bottom:1px solid #eef2ef">
+            <summary class="small strong" style="cursor:pointer">
+              {{ meeting.meeting_date|date:"d M Y" }}
+              {% if meeting.escalated %}<span class="pill bad" style="margin-left:6px">Escalated</span>{% endif %}
+            </summary>
+            <div class="tiny muted" style="margin-top:6px">
+              {% if meeting.attendees %}<div><strong>Attendees:</strong> {{ meeting.attendees }}</div>{% endif %}
+              {% if meeting.minutes %}<div style="margin-top:4px;white-space:pre-line">{{ meeting.minutes }}</div>{% endif %}
+              {% if meeting.actions %}<div style="margin-top:6px"><strong>Actions:</strong> {{ meeting.actions }}</div>{% endif %}
+            </div>
+          </details>
+        {% empty %}
+          <p class="tiny muted">No review meetings recorded yet.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

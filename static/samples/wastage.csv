@@ -1,0 +1,10 @@
+date,meal,dish,prepared_kg,consumed_kg,wasted_kg,leftover_reusable
+2026-10-01,lunch,Poha,40.00,33.20,6.80,false
+2026-10-01,lunch,Steamed Rice,55.00,46.10,8.90,false
+2026-10-01,lunch,Dal Tadka,42.00,36.40,5.60,true
+2026-10-01,lunch,Roti,34.00,29.80,4.20,false
+2026-10-01,lunch,Paneer Butter Masala,36.00,31.50,4.50,false
+2026-10-01,dinner,Steamed Rice,51.00,43.60,7.40,false
+2026-10-01,dinner,Rajma,39.00,32.70,6.30,true
+2026-10-01,dinner,Roti,36.00,31.20,4.80,false
+2026-10-01,dinner,Mixed Veg Sabzi,32.00,25.40,6.60,false

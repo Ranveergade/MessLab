@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Preparation plan · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Kitchen · per-dish quantities</p>
+    <h1>Preparation plan</h1>
+    <p>Recommended quantities come from the participation and dish-demand models. Approve as-is, or override with a reason that is logged for the next retrain.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{% url 'web:manager-export' %}?kind=plan&date={{ date|date:'Y-m-d' }}">⬇ CSV</a>
+    <button class="btn" type="button" data-print>🖨 Print</button>
+    <a class="btn btn-primary" href="{% url 'web:manager-dashboard' %}?date={{ date|date:'Y-m-d' }}">Dashboard</a>
+  </div>
+</div>
+
+<div class="card card-tight" style="margin-bottom:16px">
+  <form class="row-between" method="get" action="{% url 'web:manager-plan' %}">
+    <div class="row wrap">
+      <a class="btn btn-sm" href="?date={{ prev_date|date:'Y-m-d' }}" aria-label="Previous day">←</a>
+      <label class="field" style="gap:3px">
+        <span class="tiny muted strong">Plan date</span>
+        <input class="input" type="date" name="date" value="{{ date|date:'Y-m-d' }}" style="width:auto;min-width:160px">
+      </label>
+      <button class="btn btn-sm" type="submit">Go</button>
+      <a class="btn btn-sm" href="?date={{ next_date|date:'Y-m-d' }}" aria-label="Next day">→</a>
+    </div>
+    <div class="tiny muted">
+      {% if health.run %}
+        Model <strong>{{ health.run.version }}</strong> · participation MAE {{ health.run.participation_mae|one_decimal }} students
+      {% else %}
+        Fallback plan (no trained model yet)
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+{% for meal in meals %}
+  <section class="meal-block">
+    <div class="meal-block-head">
+      <div class="row" style="align-items:flex-start">
+        <span class="meal-icon" aria-hidden="true">{{ meal.slot.name|meal_icon }}</span>
+        <div>
+          <div class="meal-title">{{ meal.slot.get_name_display }}</div>
+          <div class="meal-time">
+            {{ meal.slot.start_time|time:"H:i" }}–{{ meal.slot.end_time|time:"H:i" }}
+            · {{ meal.slot.counters }} counters
+            {% if meal.forecast %}
+              · forecast {{ meal.forecast.predicted_participation }} students ({{ meal.forecast.lower_participation }}–{{ meal.forecast.upper_participation }})
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="row wrap" style="justify-content:flex-end">
+        <span class="pill neutral">{{ meal.intents.POSITIVE }} coming · {{ meal.intents.NO }} skipping</span>
+        {% if meal.approved %}
+          <span class="pill good">All approved</span>
+        {% elif meal.draft %}
+          <span class="pill warn">{{ meal.rows|length }} dish(es) to review</span>
+        {% else %}
+          <span class="pill neutral">No plan</span>
+        {% endif %}
+        {% if meal.draft %}
+          <form method="post" action="{% url 'web:manager-approve-all' %}" data-confirm="Approve every draft dish for {{ meal.slot.get_name_display }} on {{ date|date:'d M' }}?">
+            {% csrf_token %}
+            <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+            <input type="hidden" name="meal" value="{{ meal.slot.name }}">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn btn-sm btn-primary" type="submit">Approve all</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="meal-block-body">
+      {% if meal.rows %}
+        <div class="mtable" style="--mcols:minmax(0,1.55fr) repeat(4,minmax(0,.72fr)) auto">
+          <div class="mhead">
+            <span>Dish</span><span>Predicted</span><span>Interval</span><span>Baseline</span><span>Recommended</span><span>Action</span>
+          </div>
+          {% for row in meal.rows %}
+            <div class="mrow">
+              <div class="mcell main">
+                <div class="strong">{{ row.plan.dish.name }}</div>
+                <div class="sub">{{ row.plan.dish.get_category_display }} · {{ row.plan.dish.avg_portion_grams }}g · {{ row.plan.dish.get_diet_type_display }}</div>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Predicted</span>
+                <span class="num">{% if row.forecast %}{{ row.forecast.predicted_demand_kg|one_decimal }} kg{% else %}—{% endif %}</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">90% interval</span>
+                <span class="num muted">{% if row.forecast %}{{ row.forecast.lower_bound_kg|one_decimal }}–{{ row.forecast.upper_bound_kg|one_decimal }}{% else %}—{% endif %}</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Baseline</span>
+                <span class="num muted">{{ row.baseline_kg|one_decimal }} kg</span>
+              </div>
+              <div class="mcell">
+                <span class="cell-label">Recommended</span>
+                <span class="num good">{{ row.recommended_kg|one_decimal }} kg</span>
+                {% if row.saved_kg > 0 %}<div class="sub">−{{ row.saved_kg|one_decimal }} kg vs baseline</div>{% endif %}
+              </div>
+              <div class="actions">
+                <span class="pill {{ row.plan.status|status_class }}">{{ row.plan.get_status_display }}</span>
+                {% if not row.plan.is_approved %}
+                  <form method="post" action="{% url 'web:manager-approve' row.plan.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="btn btn-sm" type="submit">Approve</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+            <details class="inline-panel" style="margin:-2px 0 10px">
+              <summary>✏️ Override {{ row.plan.dish.name }}{% if row.plan.override_reason %} · “{{ row.plan.override_reason|truncatechars:42 }}”{% endif %}</summary>
+              <div class="panel-body">
+                <form method="post" action="{% url 'web:manager-override' row.plan.pk %}" class="form-grid">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <div class="grid grid-2">
+                    <div class="field">
+                      <label for="kg-{{ row.plan.pk }}">Kitchen quantity (kg)</label>
+                      <input class="input" id="kg-{{ row.plan.pk }}" type="number" name="recommended_kg" min="0" step="0.25" value="{{ row.recommended_kg|one_decimal }}" required>
+                      <span class="help">Use quarter-kilo steps. The original forecast stays in the audit trail.</span>
+                    </div>
+                    <div class="field">
+                      <label for="reason-{{ row.plan.pk }}">Reason (required)</label>
+                      <input class="input" id="reason-{{ row.plan.pk }}" type="text" name="reason" maxlength="500" placeholder="e.g. Sports fest — expect 120 extra" required>
+                    </div>
+                  </div>
+                  <div class="row-between">
+                    <span class="tiny muted">Overrides are logged and used as feedback for the next retrain.</span>
+                    <button class="btn btn-amber" type="submit">Save override</button>
+                  </div>
+                </form>
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <span class="emoji">🧾</span>
+          No plan for this meal. Publish a menu or close a previous service day to generate forecasts.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endfor %}
+
+<section class="card" style="margin-top:16px">
+  <div class="card-head">
+    <div>
+      <div class="card-title">Decision log · {{ date|date:"d M Y" }}</div>
+      <div class="card-sub">Every approval and override is attributed and timestamped.</div>
+    </div>
+  </div>
+  <div class="stack">
+    {% for decision in decisions %}
+      <div class="row-between" style="align-items:flex-start">
+        <div class="row" style="align-items:flex-start">
+          <span aria-hidden="true">{% if decision.action == 'override' %}✏️{% else %}✅{% endif %}</span>
+          <div>
+            <div class="small strong">{{ decision.plan.meal.get_name_display }} · {{ decision.plan.dish.name }} — {{ decision.get_action_display }}</div>
+            <div class="tiny muted">{{ decision.at|date:"d M H:i" }} · {{ decision.actor.username|default:"system" }}{% if decision.reason %} · {{ decision.reason }}{% endif %}</div>
+          </div>
+        </div>
+        <span class="pill {% if decision.action == 'override' %}info{% else %}good{% endif %}">{{ decision.action }}</span>
+      </div>
+    {% empty %}
+      <div class="empty"><span class="emoji">🪵</span>No decisions logged for this date yet.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="assumption" style="margin-top:14px">
+  Recommendations include a service-level buffer of {{ assumptions.buffer_min_pct|ratio_pct }}–{{ assumptions.buffer_max_pct|ratio_pct }} at {{ assumptions.service_level|ratio_pct }} service level. Quantities are rounded to 0.25 kg. 
+</div>
+{% endblock %}

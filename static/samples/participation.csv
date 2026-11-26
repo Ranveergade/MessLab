@@ -1,0 +1,5 @@
+date,meal,actual_participants,declared_intents,weather,is_holiday,is_exam,is_special_menu,event_name,notes
+2026-10-01,breakfast,912,548,clear,false,false,false,,Aggregate counts only
+2026-10-01,lunch,1284,771,clear,false,false,false,,
+2026-10-01,snacks,704,392,clear,false,false,false,,
+2026-10-01,dinner,1221,733,clear,false,false,false,,

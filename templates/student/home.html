@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% load messlab_extras %}
+{% block title %}Today · MessLab{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow" style="color:rgba(255,255,255,.7)">Student · {{ date|date:"l, d M Y" }}</p>
+  <h1>Your mess, minus the guesswork.</h1>
+  <p>Two taps tell the kitchen you are coming — or that you are not. No forms, no ratings, no daily questionnaire.</p>
+  <div class="hero-row">
+    <span class="hero-chip">🌱 {{ rewards.points }} green points</span>
+    <span class="hero-chip">🔥 {{ rewards.streak }}-day streak</span>
+    {% if perms_plan_weekly %}
+      <span class="hero-chip">🏠 {{ rewards.hostel_rank|default:"—" }} in hostel</span>
+    {% endif %}
+  </div>
+</section>
+
+<div class="stack-lg" style="margin-top:18px">
+  {% for card in cards %}
+    <article class="card" data-meal-card data-meal="{{ card.slot.name }}">
+      <div class="meal-head">
+        <div class="row" style="align-items:flex-start">
+          <div class="meal-icon" aria-hidden="true">{{ card.slot.name|meal_icon }}</div>
+          <div>
+            <div class="meal-title">{{ card.slot.get_name_display }}</div>
+            <div class="meal-time">{{ card.slot.start_time|time:"H:i" }}–{{ card.slot.end_time|time:"H:i" }} · peak {{ card.slot.peak_label }}</div>
+          </div>
+        </div>
+        {% if card.menu %}
+          <span class="pill {% if card.crowd.overall_level == 'high' %}bad{% elif card.crowd.overall_level == 'medium' %}warn{% else %}good{% endif %}">
+            <span class="dot"></span>{{ card.crowd.overall_level|level_label }} crowd
+          </span>
+        {% endif %}
+      </div>
+
+      {% if card.menu %}
+        <div class="crowd-strip {{ card.crowd.overall_level }}">
+          <span class="tiny strong nowrap">Best: {{ card.crowd.best_window }}</span>
+          <div class="bar"><i style="width:{{ card.crowd.peak_risk|risk_width }}%"></i></div>
+          <span class="tiny muted nowrap">{{ card.crowd.participants }} expected</span>
+        </div>
+
+        <div class="nudge {% if card.nudge.kind == 'crowd' %}crowd{% endif %}">
+          <span class="nudge-ico" aria-hidden="true">{% if card.nudge.kind == 'crowd' %}⏰{% else %}💡{% endif %}</span>
+          <span>{{ card.nudge.text }}</span>
+        </div>
+
+        {% if card.allergy_note %}
+          <div class="allergy">⚠️ {{ card.allergy_note }}</div>
+        {% endif %}
+
+        <div class="menu-list">
+          {% for item in card.items %}
+            <div class="menu-item">
+              <div class="name">
+                <span class="diet-dot {{ item.dish.diet_type }}" title="{{ item.dish.get_diet_type_display }}"></span>
+                <span>{{ item.dish.name }}</span>
+                {% if item.serving_category == 'limited' %}
+                  <span class="pill warn tiny">Limited</span>
+                {% elif item.serving_category == 'special' %}
+                  <span class="pill info tiny">Special</span>
+                {% else %}
+                  <span class="pill neutral tiny">Unlimited</span>
+                {% endif %}
+              </div>
+              <div class="row" style="gap:6px">
+                {% if not card.diet_allows|get_item:item.dish.pk %}
+                  <span class="pill neutral tiny">not your diet</span>
+                {% endif %}
+                <span class="meta">{{ item.serving_note }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="intent-box">
+          <div class="intent-label">
+            <div>
+              <div class="small strong">Are you coming?</div>
+              <div class="tiny muted">
+                {% if card.intent.is_explicit %}
+                  Saved via {{ card.intent.source }}{% if card.intent.expected_arrival_window %} · {{ card.intent.expected_arrival_window }} arrival{% endif %}
+                {% else %}
+                  Auto-prefilled from your weekly plan ({{ card.intent.plan_value }}). Override in one tap.
+                {% endif %}
+              </div>
+            </div>
+            {% if card.intent.status == "NO" %}
+              <span class="pill bad">Skipping</span>
+            {% elif card.intent.status == "MAYBE" %}
+              <span class="pill warn">Maybe</span>
+            {% else %}
+              <span class="pill good">Coming</span>
+            {% endif %}
+          </div>
+          <form class="js-intent-form" method="post" action="{% url 'web:student-intent' %}" data-date="{{ date|date:'Y-m-d' }}" data-meal="{{ card.slot.name }}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="segmented">
+              <button type="submit" name="status" value="YES" data-status="YES" class="seg-btn {% if card.intent.status == 'YES' %}active-yes{% endif %}"><span class="ico">✓</span> Coming</button>
+              <button type="submit" name="status" value="NO" data-status="NO" class="seg-btn {% if card.intent.status == 'NO' %}active-no{% endif %}"><span class="ico">✕</span> Skipping</button>
+              <button type="submit" name="status" value="MAYBE" data-status="MAYBE" class="seg-btn {% if card.intent.status == 'MAYBE' %}active-maybe{% endif %}"><span class="ico">?</span> Maybe</button>
+            </div>
+            <div class="intent-note" data-intent-note>
+              {% if card.intent.status == "NO" %}Skipping with notice earns green points and tells the kitchen to cook less.{% else %}The kitchen uses this count — not a guess — for tomorrow's plan.{% endif %}
+            </div>
+          </form>
+        </div>
+
+        <div class="intent-box" style="margin-top:12px">
+          <div class="intent-label">
+            <div>
+              <div class="small strong">Should the mess make this menu?</div>
+              <div class="tiny muted">Your answer helps the kitchen decide what to cook next time.</div>
+            </div>
+            {% if card.feedback %}
+              <span class="pill {% if card.feedback.response == 'yes' %}good{% else %}warn{% endif %}">
+                {{ card.feedback.get_response_display }}
+              </span>
+            {% endif %}
+          </div>
+          <form method="post" action="{% url 'web:student-feedback' %}" class="stack">
+            {% csrf_token %}
+            <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+            <input type="hidden" name="meal" value="{{ card.slot.name }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="segmented">
+              <button type="submit" name="response" value="yes" class="seg-btn {% if card.feedback.response == 'yes' %}active-yes{% endif %}">✓ Yes, make it</button>
+              <button type="submit" name="response" value="no" class="seg-btn {% if card.feedback.response == 'no' %}active-no{% endif %}">✕ No, change it</button>
+            </div>
+            <input class="input" type="text" name="suggestion" maxlength="240"
+                   value="{{ card.feedback.suggestion|default:'' }}"
+                   placeholder="What should be made? (optional)">
+          </form>
+        </div>
+
+        <div class="row-between" style="margin-top:12px">
+          <div class="tiny muted">
+            {% if card.checkin %}
+              ✅ Checked in at {{ card.checkin.timestamp|time:"H:i" }}{% if card.checkin.clean_plate %} · clean plate{% endif %}
+            {% else %}
+              At the counter? Tap your ID or scan the QR.
+            {% endif %}
+          </div>
+          {% if card.checkin %}
+            <span class="pill good">Checked in</span>
+          {% else %}
+            <a class="btn btn-sm" href="{% url 'web:student-checkin' %}">My QR pass</a>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="empty"><span class="emoji">🍽️</span>No menu published yet. The mess team is still finalising this meal.</div>
+      {% endif %}
+    </article>
+  {% endfor %}
+
+  <div class="split">
+    {% if perms_plan_weekly %}
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Hostel leaderboard</div>
+            <div class="card-sub">Green points earned in the last 30 days · food saved from notified skips</div>
+          </div>
+          <a class="btn btn-sm btn-ghost" href="{% url 'web:student-rewards' %}">See all</a>
+        </div>
+        {% if leaderboard %}
+          {% for row in leaderboard|slice:":4" %}
+            <div class="leader-row">
+              <span class="rank {% if forloop.counter <= 3 %}top{% endif %}">{{ forloop.counter }}</span>
+              <div class="grow">
+                <div class="row-between"><span class="small strong">{{ row.label }}</span><span class="small mono">{{ row.points }} pts</span></div>
+                <div class="bar" style="margin-top:4px"><i style="width:{{ row.points|bar_width:leaderboard.0.points }}%"></i></div>
+              </div>
+              <span class="tiny muted nowrap">{{ row.estimated_kg_saved }} kg</span>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty"><span class="emoji">🏠</span>No points yet. Be the first.</div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <div class="card-title">Why this works</div>
+      <div class="stack" style="margin-top:10px">
+        <div class="row" style="align-items:flex-start"><span aria-hidden="true">1️⃣</span><span class="small">Your weekly plan pre-fills every meal. You only tap when you change your mind.</span></div>
+        <div class="row" style="align-items:flex-start"><span aria-hidden="true">2️⃣</span><span class="small">The kitchen sees a per-dish quantity, not a vibe. Skip with notice = less cooking.</span></div>
+        <div class="row" style="align-items:flex-start"><span aria-hidden="true">3️⃣</span><span class="small">Check-ins close the loop: the next forecast learns from what actually happened.</span></div>
+      </div>
+      <div class="assumption">
+        Impact assumptions: {{ assumptions.cost_per_kg_inr|money }}/kg food cost, {{ assumptions.co2e_per_kg }} kg CO₂e per kg wasted, {{ assumptions.service_level|ratio_pct }} service level. Figures use the configured impact assumptions.
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Have a say in the mess</div>
+        <div class="card-sub">The Mess Committee is the official link between students and the operator.</div>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="{% url 'messops:sop' %}">Read the SOP</a>
+    </div>
+    <div class="grid grid-2" style="margin-top:10px">
+      <a class="card card-tight card-flat" href="{% url 'messops:student-preferences' %}">
+        <div class="row"><span aria-hidden="true">🗓️</span><strong>Next month's menu</strong></div>
+        <div class="tiny muted" style="margin-top:4px">Tell the committee what you want when the monthly consultation opens.</div>
+      </a>
+      <a class="card card-tight card-flat" href="{% url 'messops:student-complaints' %}">
+        <div class="row"><span aria-hidden="true">📣</span><strong>Raise a complaint</strong></div>
+        <div class="tiny muted" style="margin-top:4px">Menu not followed, portion short, quality issue — the committee records and follows up.</div>
+      </a>
+    </div>
+    {% if weekend_form_url %}
+      <div class="alert info" style="margin-top:12px">
+        <span class="ico">💚</span>
+        <span>
+          Not eating on campus this weekend? Tell the kitchen in advance through the
+          <a href="{{ weekend_form_url }}" rel="noopener" target="_blank">voluntary weekend meal notice</a>
+          to help reduce food waste. It is optional and never affects your mess entitlement.
+        </span>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

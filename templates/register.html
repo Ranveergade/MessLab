@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Create an account · MessLab{% endblock %}
+{% block anon_content %}
+<div class="login-wrap">
+  <section class="login-art">
+    <div class="brand" style="color:#fff">
+      <span class="brand-mark" style="background:rgba(255,255,255,.16);box-shadow:none">🌿</span>
+      <span>MessLab<small style="color:rgba(255,255,255,.65)">Intelligent residential dining</small></span>
+    </div>
+    <h2>One account, two taps a day.</h2>
+    <p>Register with your college email. We verify it with a one-time code, then pre-fill your weekly meal plan so most days need no input at all.</p>
+    <div class="quote">
+      “No biometrics, no names shown to the kitchen. Managers work with pseudonymous codes only.”
+    </div>
+    <div class="row wrap" style="margin-top:26px;gap:8px">
+      <span class="hero-chip">✉️ Email verified</span>
+      <span class="hero-chip">🔒 No biometrics</span>
+      <span class="hero-chip">🌱 Green points</span>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <div class="login-card">
+      <div class="stack">
+        {% if step == "verify" %}
+          <div>
+            <h1>Verify your email</h1>
+            <p class="muted" style="margin-top:6px">Enter the 6-digit code sent to <strong>{{ email }}</strong>.</p>
+          </div>
+
+          <div data-otp-card>
+            {% if error %}
+              <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ error }}</span></div>
+            {% endif %}
+
+            <form method="post" action="{% url 'web:register' %}" class="stack" autocomplete="off">
+              {% csrf_token %}
+              <input type="hidden" name="step" value="verify">
+              <input type="hidden" name="email" value="{{ email }}">
+              <input type="hidden" name="next" value="{{ next }}">
+              {% for key, value in reg_data.items %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+              {% endfor %}
+              <div class="field">
+                <label for="id_code">Verification code</label>
+                <input class="input" type="text" name="code" id="id_code" inputmode="numeric"
+                       pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"
+                       placeholder="123456" required autofocus>
+              </div>
+              <button class="btn btn-primary btn-block" type="submit">Verify and create account</button>
+            </form>
+
+            <div class="row wrap" style="justify-content:space-between;align-items:center;gap:10px">
+              <form method="post" action="{% url 'web:register' %}" class="inline-form" id="otp-resend-form">
+                {% csrf_token %}
+                <input type="hidden" name="step" value="request">
+                <input type="hidden" name="email" value="{{ email }}">
+                {% for key, value in reg_data.items %}
+                  <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <button class="btn btn-ghost btn-sm" type="submit" id="otp-resend" data-cooldown="60">Resend code</button>
+                <span class="tiny muted" id="otp-resend-hint" aria-live="polite"></span>
+              </form>
+              <a class="tiny" href="{% url 'web:register' %}">Start over</a>
+            </div>
+            <p class="tiny muted">The code expires in {{ otp_ttl_minutes }} minutes and works once.</p>
+          </div>
+        {% else %}
+          <div>
+            <h1>Create your account</h1>
+            <p class="muted" style="margin-top:6px">Students, day scholars and faculty can self-register. Staff accounts are created by an administrator.</p>
+          </div>
+
+          {% if error %}
+            <div class="alert high" role="alert"><span class="ico">⚠️</span><span>{{ error }}</span></div>
+          {% endif %}
+
+          <form method="post" action="{% url 'web:register' %}" class="stack" id="register-form">
+            {% csrf_token %}
+            <input type="hidden" name="step" value="request">
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="field">
+              <label for="{{ form.full_name.id_for_label }}">Full name</label>
+              {{ form.full_name }}
+              {% if form.full_name.errors %}<span class="tiny" style="color:var(--red)">{{ form.full_name.errors|join:", " }}</span>{% endif %}
+            </div>
+            <div class="field">
+              <label for="{{ form.email.id_for_label }}">College email</label>
+              {{ form.email }}
+              {% if form.email.errors %}<span class="tiny" style="color:var(--red)">{{ form.email.errors|join:", " }}</span>{% endif %}
+            </div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="field">
+                <label for="{{ form.role.id_for_label }}">I am a</label>
+                {{ form.role }}
+                {% if form.role.errors %}<span class="tiny" style="color:var(--red)">{{ form.role.errors|join:", " }}</span>{% endif %}
+              </div>
+              <div class="field" data-hostel-field>
+                <label for="{{ form.hostel.id_for_label }}">Hostel</label>
+                {{ form.hostel }}
+                {% if form.hostel.errors %}<span class="tiny" style="color:var(--red)">{{ form.hostel.errors|join:", " }}</span>{% endif %}
+              </div>
+            </div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="field">
+                <label for="{{ form.diet.id_for_label }}">Diet</label>
+                {{ form.diet }}
+              </div>
+            </div>
+            <div class="field">
+              <label for="{{ form.phone.id_for_label }}">Phone <span class="tiny muted">(optional)</span></label>
+              {{ form.phone }}
+              {% if form.phone.errors %}<span class="tiny" style="color:var(--red)">{{ form.phone.errors|join:", " }}</span>{% endif %}
+            </div>
+            <label class="check">
+              <input type="checkbox" name="consent" id="id_consent" required>
+              <span>I agree to MessLab storing my meal intents, check-ins and menu feedback to run the mess and improve forecasts. I can export or delete my data at any time.</span>
+            </label>
+            {% if form.consent.errors %}<span class="tiny" style="color:var(--red)">{{ form.consent.errors|join:", " }}</span>{% endif %}
+            <button class="btn btn-primary btn-block" type="submit">Send verification code</button>
+          </form>
+
+          <p class="tiny muted center">Already registered? <a href="{% url 'web:login' %}">Sign in with an email code</a>.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/register.js' %}" defer></script>
+{% endblock %}

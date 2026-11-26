@@ -1,0 +1,10 @@
+date,meal,dish,planned_quantity_kg,is_special,category,diet_type,avg_portion_grams,popularity_baseline,menu_notes
+2026-10-01,lunch,Poha,42.00,false,main,veg,180,0.62,
+2026-10-01,lunch,Steamed Rice,58.00,false,rice,veg,200,0.78,
+2026-10-01,lunch,Dal Tadka,44.00,false,side,veg,180,0.74,
+2026-10-01,lunch,Roti,36.00,false,bread,veg,60,0.82,
+2026-10-01,lunch,Paneer Butter Masala,39.00,true,main,veg,200,0.72,Chef special
+2026-10-01,dinner,Steamed Rice,54.00,false,rice,veg,200,0.78,
+2026-10-01,dinner,Rajma,41.00,false,side,veg,200,0.57,
+2026-10-01,dinner,Roti,38.00,false,bread,veg,60,0.82,
+2026-10-01,dinner,Mixed Veg Sabzi,34.00,false,side,veg,180,0.52,

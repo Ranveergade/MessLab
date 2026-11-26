@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static messlab_extras %}
+{% block title %}Import data · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Data · organiser CSV integration</p>
+    <h1>Import data</h1>
+    <p>Bring real mess records in through the mess tables. Validate first, then import. Every upload is audited with row counts and warnings.</p>
+  </div>
+</div>
+
+<div class="split">
+  <section class="card">
+    <div class="card-title">Upload a CSV</div>
+    <div class="card-sub">UTF-8 or Latin-1 · first row must be a header</div>
+    <form method="post" action="{% url 'web:manager-import' %}" enctype="multipart/form-data" class="form-grid" style="margin-top:12px">
+      {% csrf_token %}
+      <div class="field">
+        <label>What is in this file?</label>
+        <div class="import-kind">
+          {% for value, label in kinds %}
+            <label>
+              <input type="radio" name="kind" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+              <span>
+                <span class="small strong">{{ label }}</span>
+                <span class="tiny muted" style="display:block">
+                  {% if value == 'participation' %}
+                    date, meal, actual_participants, declared_intents, weather, is_holiday, is_exam
+                  {% elif value == 'menus' %}
+                    date, meal, dish, planned_quantity_kg, is_special, notes
+                  {% elif value == 'prepared' %}
+                    date, meal, dish, prepared_kg
+                  {% else %}
+                    date, meal, dish, prepared_kg, consumed_kg, wasted_kg, leftover_reusable
+                  {% endif %}
+                </span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="file">CSV file</label>
+        <input class="input" id="file" type="file" name="file" accept=".csv,text/csv" required>
+      </div>
+
+      <label class="check"><input type="checkbox" name="dry_run" checked> Validate only — do not write rows</label>
+      <label class="check"><input type="checkbox" name="allow_partial"> Allow partial import (skip invalid rows and keep warnings)</label>
+
+      <div class="row-between">
+        <span class="tiny muted">Dates use <code>YYYY-MM-DD</code>. Meals use breakfast, lunch, snacks or dinner.</span>
+        <button class="btn btn-primary" type="submit">Upload</button>
+      </div>
+    </form>
+
+    <div class="assumption">
+      Unknown dishes are rejected rather than created silently. Re-importing the same date/meal/dish updates the existing row. Partial imports are recorded with the skipped row numbers.
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Sample files</div>
+    <div class="card-sub">Small, valid templates you can edit in a spreadsheet</div>
+    <div class="stack" style="margin-top:12px">
+      <a class="btn btn-block" href="{% static 'samples/participation.csv' %}" download>⬇ participation.csv</a>
+      <a class="btn btn-block" href="{% static 'samples/menus.csv' %}" download>⬇ menus.csv</a>
+      <a class="btn btn-block" href="{% static 'samples/prepared.csv' %}" download>⬇ prepared.csv</a>
+      <a class="btn btn-block" href="{% static 'samples/wastage.csv' %}" download>⬇ wastage.csv</a>
+    </div>
+    <div class="divider"></div>
+    <div class="small strong">Before importing</div>
+    <ol class="small muted" style="margin:7px 0 0;padding-left:18px;line-height:1.7">
+      <li>Create the dishes and meal slots first from the manager workspace.</li>
+      <li>Import menus for the dates you want forecasts for.</li>
+      <li>Import participation and wastage history.</li>
+      <li>Run <code>python manage.py train_models</code>.</li>
+      <li>Generate plans for the next 8 days.</li>
+    </ol>
+    <div class="assumption">
+      Privacy: analytics use the pseudonymous <code>student_code</code>, never names. CSV imports contain aggregate meal counts, not student-level identities.
+    </div>
+  </section>
+</div>
+
+<section class="card" style="margin-top:16px">
+  <div class="card-head">
+    <div>
+      <div class="card-title">Import history</div>
+      <div class="card-sub">Latest 12 uploads, including dry runs</div>
+    </div>
+  </div>
+  {% if recent %}
+    <div class="mtable" style="--mcols:minmax(0,1.2fr) minmax(0,.9fr) repeat(3,minmax(0,.6fr)) minmax(0,1.1fr)">
+      <div class="mhead"><span>File</span><span>Kind</span><span>Created</span><span>Updated</span><span>Skipped</span><span>When / by</span></div>
+      {% for row in recent %}
+        <div class="mrow">
+          <div class="mcell main">
+            <div class="strong">{{ row.filename }}</div>
+            <div class="sub">{{ row.errors|length }} warning(s)</div>
+          </div>
+          <div class="mcell"><span class="cell-label">Kind</span><span class="small">{{ row.get_kind_display }}</span></div>
+          <div class="mcell"><span class="cell-label">Created</span><span class="num">{{ row.rows_created }}</span></div>
+          <div class="mcell"><span class="cell-label">Updated</span><span class="num">{{ row.rows_updated }}</span></div>
+          <div class="mcell"><span class="cell-label">Skipped</span><span class="num {% if row.rows_skipped %}warn{% endif %}">{{ row.rows_skipped }}</span></div>
+          <div class="actions">
+            <span class="tiny muted">{{ row.created_at|date:"d M H:i" }} · {{ row.imported_by.username|default:"—" }}</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty"><span class="emoji">📥</span>No imports yet.</div>
+  {% endif %}
+</section>
+{% endblock %}

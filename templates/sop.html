@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% load messlab_extras i18n %}
+{% block title %}Mess Committee SOP · MessLab{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Mess Committee · Official document</p>
+    <h1>Standard Operating Procedure</h1>
+    <p>
+      The formal interface between students and the mess operator: monthly menu planning,
+      food-item classification, changes, grievances and monthly reviews.
+    </p>
+  </div>
+  <div class="page-actions no-print">
+    <button class="btn" type="button" data-print>🖨 Print / PDF</button>
+    <a class="btn btn-ghost" href="{% url 'messops:menu-board' %}">🪧 Canteen board</a>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:18px">
+  <section class="card">
+    <div class="tiny muted strong">Chairperson – Hostel Residence</div>
+    <div class="card-title" style="margin-top:4px">{{ chairperson_name }}</div>
+    <div class="tiny muted" style="margin-top:4px">Final authority on mess operations, menu approval and disputes.</div>
+  </section>
+  <section class="card">
+    <div class="tiny muted strong">Mess operator</div>
+    <div class="card-title" style="margin-top:4px">{{ operator_name }}</div>
+    <div class="tiny muted" style="margin-top:4px">Submits the available-item list and implements the agreed menu.</div>
+  </section>
+  <section class="card">
+    <div class="tiny muted strong">Committee composition</div>
+    <div class="card-title" style="margin-top:4px">
+      {{ composition.ug_count }}/2 UG · {{ composition.pg_count }}/2 PG
+    </div>
+    <div class="tiny {% if composition.is_complete %}good{% else %}warn{% endif %}" style="margin-top:4px">
+      {% if composition.is_complete %}
+        Composition complete: four student representatives.
+      {% else %}
+        Composition not yet complete. The SOP requires two UG and two PG representatives.
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<div class="split">
+  <div class="stack-lg">
+    <section class="card">
+      <div class="card-title">Purpose</div>
+      <p class="small" style="margin-top:8px">
+        This SOP establishes a structured and transparent mechanism for planning, finalizing,
+        implementing and monitoring the monthly mess menu. It ensures student participation,
+        variety in food options, clarity regarding item availability and quantities, and timely
+        resolution of reported issues.
+      </p>
+    </section>
+
+    <section class="card" id="composition">
+      <div class="card-title">2. Composition of the Mess Committee</div>
+      <p class="small" style="margin-top:8px">
+        The Mess Committee comprises four student representatives: two from the Undergraduate
+        (UG) programmes and two from the Postgraduate (PG) programmes. It is the official
+        communication channel between the student community and the mess operator for menu
+        planning, food services and operational discrepancies.
+      </p>
+      <div class="table-wrap" style="margin-top:12px">
+        <table class="admin-table">
+          <thead>
+            <tr><th>Member</th><th>Role</th><th>Programme</th><th>Contact</th></tr>
+          </thead>
+          <tbody>
+            {% for member in composition.members %}
+              <tr>
+                <td><strong>{{ member.display_name }}</strong></td>
+                <td class="tiny">{{ member.get_role_display }}</td>
+                <td class="tiny">{{ member.get_program_display }}</td>
+                <td class="tiny">{{ member.display_email|default:"—" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="tiny muted">No committee members have been recorded yet. The mess office can add them from the committee workspace.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="governance">
+      <div class="card-title">3. Authority and governance</div>
+      <ul class="small" style="margin-top:10px;padding-left:18px">
+        <li>The <strong>Chairperson – Hostel Residence</strong> is the final authority on mess operations, menu approval, policy decisions and dispute resolution.</li>
+        <li>The Mess Committee and the mess operator coordinate directly on routine matters: menu planning, student preferences, menu modifications and operational concerns.</li>
+        <li>Routine operational decisions are ordinarily reached through mutual consultation and agreement.</li>
+        <li>Disagreement, unresolved complaints, repeated deviations from the agreed menu or matters requiring institutional intervention are referred to the Chairperson – Hostel Residence.</li>
+        <li>The Chairperson may review, approve, modify or intervene in any decision concerning mess operations in the institutional and student interest.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="planning">
+      <div class="card-title">4. Monthly menu planning and finalization</div>
+      <div class="stack" style="margin-top:10px">
+        <div>
+          <div class="small strong">Step 1 · Operator submits available items</div>
+          <p class="small muted" style="margin-top:4px">
+            In the last week of every month the operator gives the committee an exhaustive list of
+            breakfast, lunch, evening snacks, dinner and other items for the forthcoming month,
+            clearly separated into regular service, special preparations and limited-quantity service.
+          </p>
+        </div>
+        <div>
+          <div class="small strong">Step 2 · Student consultation</div>
+          <p class="small muted" style="margin-top:4px">
+            The list is circulated to students. Students send choices and suggestions through the
+            four committee representatives. The committee consolidates preferences, respecting the
+            diversity of UG and PG requirements, and communicates them to the operator.
+          </p>
+        </div>
+        <div>
+          <div class="small strong">Step 3 · Mutual discussion and finalization</div>
+          <p class="small muted" style="margin-top:4px">
+            The committee and operator discuss the proposed menu. On the basis of student
+            preferences, operational feasibility and mutual agreement, the monthly menu is finalized
+            before the month begins and communicated to all students. It is displayed at the canteen
+            notice board.
+          </p>
+          <div class="row wrap no-print" style="margin-top:8px">
+            {% if perms_preference_respond %}
+              <a class="btn btn-sm" href="{% url 'messops:student-preferences' %}">Submit a preference</a>
+            {% endif %}
+            <a class="btn btn-sm btn-ghost" href="{% url 'messops:menu-board' %}">View the notice board</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="classification">
+      <div class="card-title">5. Classification of menu items</div>
+      <p class="small" style="margin-top:8px">
+        The final monthly menu must clearly classify every item. The daily menu and canteen board
+        use these exact categories:
+      </p>
+      <div class="grid grid-3" style="margin-top:12px">
+        <div class="card card-tight card-flat">
+          <div class="row"><span class="pill good">Unlimited</span></div>
+          <p class="tiny muted" style="margin-top:6px">Served without a predefined quantity restriction. The operator ensures adequate preparation throughout service.</p>
+        </div>
+        <div class="card card-tight card-flat">
+          <div class="row"><span class="pill info">Special</span></div>
+          <p class="tiny muted" style="margin-top:6px">Offered for variety. The frequency of each special item is stated in the monthly menu.</p>
+        </div>
+        <div class="card card-tight card-flat">
+          <div class="row"><span class="pill warn">Limited</span></div>
+          <p class="tiny muted" style="margin-top:6px">A predefined portion per student. The portion size and monthly frequency are stated, and distribution is equitable.</p>
+        </div>
+      </div>
+      <p class="tiny muted" style="margin-top:10px">
+        The final menu must explicitly mention the category and frequency of each item to avoid
+        ambiguity or misunderstanding.
+      </p>
+    </section>
+
+    <section class="card" id="implementation">
+      <div class="card-title">6. Implementation of the finalized menu</div>
+      <ul class="small" style="margin-top:10px;padding-left:18px">
+        <li>Once mutually finalized, the monthly menu is the agreed menu for the entire month.</li>
+        <li>The operator makes reasonable arrangements to implement it as communicated.</li>
+        <li>The committee periodically interacts with students and monitors whether the menu is followed.</li>
+        <li>Any deviation is brought to the committee's attention.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="changes">
+      <div class="card-title">7. Changes to the finalized menu</div>
+      <ul class="small" style="margin-top:10px;padding-left:18px">
+        <li>Any proposed change by the operator or committee is communicated in advance.</li>
+        <li>The proposed change is discussed between the committee and the operator.</li>
+        <li>Changes are implemented only after mutual agreement.</li>
+        <li>The revised menu or change is communicated to students in advance through the designated channel.</li>
+        <li>In exceptional circumstances (ingredient shortage, unforeseen operational difficulty) the operator immediately informs the committee and proposes a suitable alternative.</li>
+        <li>Unilateral changes to the agreed menu are avoided.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="complaints">
+      <div class="card-title">8. Complaints, discrepancies and grievance redressal</div>
+      <p class="small" style="margin-top:8px">
+        Complaints may include non-adherence to the finalized menu, non-availability of agreed
+        items, changes without prior agreement, inadequate portions, shortage of unlimited items,
+        quality, hygiene or food-safety concerns, and any other discrepancy.
+      </p>
+      <div class="stack" style="margin-top:12px">
+        <div class="small"><strong>1.</strong> Report the complaint to any of the four committee representatives.</div>
+        <div class="small"><strong>2.</strong> The committee records it and communicates it to the operator.</div>
+        <div class="small"><strong>3.</strong> The committee and operator discuss and mutually agree corrective action.</div>
+        <div class="small"><strong>4.</strong> The resolution and action taken are recorded by the committee.</div>
+        <div class="small"><strong>5.</strong> Unresolved or recurring issues are escalated to the Chairperson – Hostel Residence.</div>
+      </div>
+      <div class="alert info" style="margin-top:12px">
+        <span class="ico">📣</span>
+        <span>Students should route complaints through the committee rather than starting individual discussions with the operator, so communication stays systematic and accountable.</span>
+      </div>
+      {% if perms_complaint_submit %}
+        <div class="no-print" style="margin-top:10px">
+          <a class="btn btn-sm btn-primary" href="{% url 'messops:student-complaints' %}">Raise a complaint</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card" id="roles">
+      <div class="card-title">9. Roles and responsibilities</div>
+      <div class="grid grid-3" style="margin-top:12px">
+        <div>
+          <div class="small strong">Mess Committee</div>
+          <ul class="tiny muted" style="margin-top:6px;padding-left:16px">
+            <li>Collect and consolidate student preferences.</li>
+            <li>Coordinate monthly menu planning.</li>
+            <li>Ensure categories and frequencies are explicit.</li>
+            <li>Communicate the approved menu.</li>
+            <li>Coordinate proposed changes.</li>
+            <li>Record complaints, discrepancies and corrections.</li>
+            <li>Represent UG and PG interests.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="small strong">Mess operator</div>
+          <ul class="tiny muted" style="margin-top:6px;padding-left:16px">
+            <li>Submit the exhaustive available-item list.</li>
+            <li>Cooperate in finalizing the monthly menu.</li>
+            <li>Communicate availability and quantities clearly.</li>
+            <li>Implement the mutually agreed menu.</li>
+            <li>Give advance notice of proposed changes.</li>
+            <li>Address complaints and maintain consistency.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="small strong">Students</div>
+          <ul class="tiny muted" style="margin-top:6px;padding-left:16px">
+            <li>Participate constructively in preferences.</li>
+            <li>Send suggestions and complaints through representatives.</li>
+            <li>Cooperate with agreed arrangements and guidelines.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="review">
+      <div class="card-title">10. Monthly review meeting</div>
+      <p class="small" style="margin-top:8px">
+        The committee holds one monthly review meeting with the operator, ideally in the last week
+        of the month alongside menu planning. All four representatives and the operator attend.
+      </p>
+      <div class="small strong" style="margin-top:10px">Agenda</div>
+      <ol class="small muted" style="margin-top:4px;padding-left:18px">
+        <li>Review adherence to the current month's approved menu.</li>
+        <li>Discuss student feedback, complaints and grievances.</li>
+        <li>Review food quality, quantity, variety and service standards.</li>
+        <li>Identify recurring discrepancies and corrective measures.</li>
+        <li>Discuss and mutually finalize the forthcoming menu.</li>
+      </ol>
+      <p class="tiny muted" style="margin-top:10px">
+        Key discussion points, decisions and agreed actions are documented. Matters needing
+        administrative intervention are referred to the Chairperson – Hostel Residence, the final
+        authority.
+      </p>
+    </section>
+
+    <section class="card" id="guidelines">
+      <div class="card-title">11. General guidelines</div>
+      <ul class="small" style="margin-top:10px;padding-left:18px">
+        <li>The monthly menu is finalized through mutual consultation and agreement.</li>
+        <li>Transparency and effective communication are maintained between the committee and operator.</li>
+        <li>Student preferences are given due consideration.</li>
+        <li>Neither the operator nor the committee makes unilateral changes to the approved menu.</li>
+        <li>All complaints and discrepancies are addressed through the established committee mechanism.</li>
+        <li>The SOP is reviewed periodically to incorporate suggestions and improve the mess experience.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="annexure">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Voluntary food-waste reduction initiative</div>
+          <div class="card-sub">Not part of the SOP · mutually agreed between the committee and operator</div>
+        </div>
+        <span class="pill neutral">Optional</span>
+      </div>
+      <p class="small muted" style="margin-top:8px">
+        A Google Form may be circulated to obtain advance notice from students who do not intend to
+        use mess facilities on weekends. The information helps the operator estimate meals more
+        accurately, optimize preparation and reduce waste. It is based entirely on mutual
+        understanding and does not restrict any student's entitlement to mess services.
+      </p>
+      {% if weekend_form_url %}
+        <div class="no-print" style="margin-top:10px">
+          <a class="btn btn-sm" href="{{ weekend_form_url }}" rel="noopener" target="_blank">Open the weekend meal notice form</a>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="stack-lg">
+    <section class="card no-print">
+      <div class="card-title">On this page</div>
+      <div class="stack" style="margin-top:10px">
+        <a class="small" href="#composition">2. Committee composition</a>
+        <a class="small" href="#governance">3. Authority and governance</a>
+        <a class="small" href="#planning">4. Monthly menu planning</a>
+        <a class="small" href="#classification">5. Item classification</a>
+        <a class="small" href="#changes">7. Changes to the menu</a>
+        <a class="small" href="#complaints">8. Complaints and grievances</a>
+        <a class="small" href="#review">10. Monthly review</a>
+        <a class="small" href="#annexure">Voluntary waste initiative</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Current menu cycle</div>
+      {% if cycle %}
+        <div class="row-between" style="margin-top:8px">
+          <strong>{{ cycle.label }}</strong>
+          <span class="pill {% if cycle.is_published %}good{% elif cycle.is_closed %}neutral{% else %}warn{% endif %}">
+            {{ cycle.get_status_display }}
+          </span>
+        </div>
+        {% if cycle.approved_by_name %}
+          <div class="tiny muted" style="margin-top:6px">Approved by {{ cycle.approved_by_name }}{% if cycle.approved_at %} on {{ cycle.approved_at|date:"d M Y" }}{% endif %}.</div>
+        {% endif %}
+        {% if cycle.final_menu %}
+          <div class="divider"></div>
+          <div class="small strong">Final menu</div>
+          <div class="small muted" style="margin-top:6px;white-space:pre-line">{{ cycle.final_menu }}</div>
+        {% elif cycle.available_items %}
+          <div class="divider"></div>
+          <div class="small strong">Items proposed by the operator</div>
+          <div class="small muted" style="margin-top:6px;white-space:pre-line">{{ cycle.available_items|truncatechars:500 }}</div>
+        {% else %}
+          <p class="tiny muted" style="margin-top:8px">The operator's available-item list is not recorded yet.</p>
+        {% endif %}
+      {% else %}
+        <p class="tiny muted" style="margin-top:8px">No monthly cycle has been created yet.</p>
+      {% endif %}
+    </section>
+
+    <section class="card no-print">
+      <div class="card-title">Quick links</div>
+      <div class="stack" style="margin-top:10px">
+        {% if perms_preference_respond %}
+          <a class="btn btn-sm" href="{% url 'messops:student-preferences' %}">Menu preferences</a>
+        {% endif %}
+        {% if perms_complaint_submit %}
+          <a class="btn btn-sm" href="{% url 'messops:student-complaints' %}">Complaints</a>
+        {% endif %}
+        <a class="btn btn-sm btn-ghost" href="{% url 'messops:menu-board' %}">Canteen notice board</a>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<p class="tiny muted" style="margin-top:18px">
+  The Mess Committee is the formal interface between students and the mess operator, ensuring
+  participatory decision-making, transparency, consistency and accountability in mess operations.
+</p>
+{% endblock %}

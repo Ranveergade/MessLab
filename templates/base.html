@@ -1,0 +1,111 @@
+{% load static messlab_extras i18n %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f6b4f">
+  <meta name="description" content="MessLab — intelligent residential dining.">
+  <title>{% block title %}MessLab{% endblock %}</title>
+  <link rel="manifest" href="{% url 'web:manifest' %}">
+  <link rel="icon" href="{% static 'icons/icon.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% if user.is_authenticated %}
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="{{ landing_url }}">
+        <span class="brand-mark" aria-hidden="true">🌿</span>
+        <span>MessLab<small>{% translate "Intelligent dining" %}</small></span>
+      </a>
+      <div class="topbar-meta">
+        {% translate "Member" as member_label %}
+        <span class="role-pill {% if perms_plan_view %}manager{% endif %}">{{ role_label|default:member_label }}</span>
+        {% if perms_sop_view %}
+          <a class="icon-btn" href="{% url 'messops:sop' %}" title="{% translate 'Mess Committee SOP' %}" aria-label="{% translate 'Mess Committee SOP' %}">📜</a>
+        {% endif %}
+        {% if perms_feedback_create and not perms_plan_view %}
+          <a class="icon-btn hide-mobile" href="{% url 'web:staff-home' %}" title="{% translate 'Staff home' %}">🧑‍🍳</a>
+        {% endif %}
+        {% if perms_plan_view or perms_live_view %}
+          <button class="icon-btn manager-menu-btn" type="button" data-drawer-open aria-label="{% translate 'Open workspace menu' %}">☰</button>
+        {% endif %}
+        <a class="icon-btn" href="{% url 'web:privacy' %}" title="{% translate 'Your data' %}" aria-label="{% translate 'Your data' %}">🔒</a>
+        <form method="post" action="{% url 'web:logout' %}" class="js-no-loading">
+          {% csrf_token %}
+          <button class="icon-btn" type="submit" aria-label="{% translate 'Log out' %}" title="{% translate 'Log out' %}">↪</button>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  {% if perms_plan_view or perms_live_view %}
+    <div class="drawer-backdrop" data-drawer-backdrop></div>
+    <aside class="drawer" data-drawer aria-label="{% translate 'Workspace navigation' %}">
+      <div class="drawer-head">
+        <a class="brand" href="{{ landing_url }}">
+          <span class="brand-mark" aria-hidden="true">🌿</span><span>MessLab</span>
+        </a>
+        <button class="icon-btn" type="button" data-drawer-close aria-label="{% translate 'Close menu' %}">✕</button>
+      </div>
+      {% include "partials/role_nav.html" %}
+    </aside>
+  {% endif %}
+
+  <div class="container">
+    <div class="layout {% if perms_plan_view or perms_live_view %}with-sidebar{% endif %}">
+      {% if perms_plan_view or perms_live_view %}
+        <aside class="sidebar" aria-label="{% translate 'Workspace sections' %}">
+          <div class="sidebar-inner">{% include "partials/role_nav.html" %}</div>
+        </aside>
+      {% endif %}
+      <main class="page">
+        {% if messages %}
+          <div class="flash-wrap">
+            {% for message in messages %}
+              <div class="flash {{ message.tags }}" role="status">
+                <span aria-hidden="true">{% if message.tags == 'error' %}⚠️{% elif message.tags == 'warning' %}💡{% else %}✅{% endif %}</span>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% if perms_qr_show and not perms_plan_view %}
+    <nav class="bottom-nav" aria-label="{% translate 'Student navigation' %}">
+      <div class="bottom-nav-inner {% if perms_plan_weekly %}five{% endif %}">
+        <a class="bottom-link {% if active == 'home' %}active{% endif %}" href="{% url 'web:student-home' %}">
+          <span class="ico" aria-hidden="true">🏠</span><span>{% translate "Today" %}</span>
+        </a>
+        {% if perms_plan_weekly %}
+          <a class="bottom-link {% if active == 'plan' %}active{% endif %}" href="{% url 'web:student-plan' %}">
+            <span class="ico" aria-hidden="true">🗓️</span><span>{% translate "My plan" %}</span>
+          </a>
+        {% endif %}
+        <a class="bottom-link {% if active == 'checkin' %}active{% endif %}" href="{% url 'web:student-checkin' %}">
+          <span class="ico" aria-hidden="true">📷</span><span>{% translate "Check in" %}</span>
+        </a>
+        <a class="bottom-link {% if active == 'rewards' %}active{% endif %}" href="{% url 'web:student-rewards' %}">
+          <span class="ico" aria-hidden="true">🌱</span><span>{% translate "Rewards" %}</span>
+        </a>
+        <a class="bottom-link {% if active == 'sop' %}active{% endif %}" href="{% url 'messops:sop' %}">
+          <span class="ico" aria-hidden="true">📜</span><span>{% translate "SOP" %}</span>
+        </a>
+      </div>
+    </nav>
+  {% endif %}
+{% else %}
+  {% block anon_content %}{% endblock %}
+{% endif %}
+
+<script src="{% static 'js/app.js' %}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
